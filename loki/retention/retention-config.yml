@@ -1,0 +1,40 @@
+# Loki Retention Policy Documentation
+#
+# Default retention: 7 days (168h)
+# Override via env var: LOKI_RETENTION_PERIOD
+#
+# The retention period is configured in loki-config.yml:
+#   limits_config.retention_period: 168h
+#   limits_config.reject_old_samples: true
+#   limits_config.reject_old_samples_max_age: 168h
+#   chunk_store_config.max_look_back_period: 168h
+#   table_manager.retention_deletes_enabled: true
+#   table_manager.retention_period: 168h
+#
+# If you change LOKI_RETENTION_PERIOD, you must also update
+# reject_old_samples_max_age and max_look_back_period to match,
+# as Loki does not automatically derive these from a single env var.
+#
+# Manual flush:   curl -X POST http://loki:3100/flush
+# Check health:   curl -s http://loki:3100/ready
+# Check metrics:  curl -s http://loki:3100/metrics | grep loki_
+# Force compact:  docker compose restart loki
+# Disk usage:     du -sh /path/to/loki/data
+
+retention:
+  default_period: 168h
+  environment_override: LOKI_RETENTION_PERIOD
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
+
+flush:
+  api_endpoint: http://loki:3100/flush
+  description: Force-flush all pending chunks
+
+compaction:
+  interval: 10m
+  description: Compactor merges and deletes expired chunks on schedule
+
+monitoring:
+  readiness_endpoint: http://loki:3100/ready
+  metrics_endpoint: http://loki:3100/metrics
