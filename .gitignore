@@ -1,0 +1,24 @@
+# Sensitive
+.env
+*.pem
+*.key
+traefik/certificates/*.crt
+traefik/certificates/*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Monitoring
+monitoring/screenshots/*
+monitoring/reports/*
+monitoring/benchmarks/*
+
+# Script output
+scripts/*.log
