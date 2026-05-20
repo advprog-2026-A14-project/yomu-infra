@@ -1,0 +1,37 @@
+# Traefik Static Configuration
+# Docs: https://doc.traefik.io/traefik/operations/static-configuration/
+
+api:
+  dashboard: true
+  insecure: true
+
+ping: {}
+
+providers:
+  docker:
+    exposedByDefault: false
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+
+metrics:
+  prometheus: {}
+
+accessLog: {}
+
+log:
+  level: INFO
+
+# Uncomment for Let's Encrypt TLS certificates
+# certificatesResolvers:
+#   letsencrypt:
+#     acme:
+#       tlsChallenge: {}
+#       email: admin@yomu.my.id
+#       storage: /etc/traefik/acme.json
