@@ -1,0 +1,97 @@
+groups:
+  - name: yomu-alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(traefik_service_requests_total{code=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          environment: production
+          service: traefik
+        annotations:
+          summary: "High error rate detected on {{ $labels.service }}"
+          description: >-
+            Error rate for {{ $labels.service }} is {{ $value | printf "%.2f" }}
+            requests/sec (5xx responses over last 5m). Threshold: 0.1 req/s.
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          environment: production
+          service: "{{ $labels.job }}"
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: >-
+            Target {{ $labels.instance }} in job {{ $labels.job }} has been
+            unreachable for more than 1 minute.
+
+      - alert: JavaHeapHigh
+        expr: jvm_memory_used_bytes / jvm_memory_max_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          environment: "{{ $labels.environment }}"
+          service: java
+        annotations:
+          summary: "JVM heap usage above 85% on {{ $labels.instance }}"
+          description: >-
+            JVM memory usage is at {{ $value | printf "%.0f" }}% for
+            {{ $labels.instance }} ({{ $labels.environment }}). Threshold: 85%.
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(traefik_service_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          environment: production
+          service: traefik
+        annotations:
+          summary: "High p95 latency through Traefik"
+          description: >-
+            95th percentile request latency is {{ $value | printf "%.2f" }}s.
+            Threshold: 2s.
+
+      - alert: DatabaseDown
+        expr: pg_up == 0
+        for: 1m
+        labels:
+          severity: critical
+          environment: production
+          service: postgres
+        annotations:
+          summary: "PostgreSQL is down"
+          description: >-
+            PostgreSQL exporter cannot reach the database. The database may be
+            unreachable or the exporter sidecar is misconfigured.
+
+      - alert: BlueGreenOutOfSync
+        expr: >-
+          (count(up{job=~"java-blue|rust-blue|frontend-blue"} == 1) == 0)
+          and
+          (count(up{job=~"java-green|rust-green|frontend-green"} == 1) == 0)
+        for: 2m
+        labels:
+          severity: critical
+          environment: production
+          service: platform
+        annotations:
+          summary: "Both blue and green environments have no healthy services"
+          description: >-
+            No services are reachable in either the blue or green environment.
+            This likely indicates a platform-wide outage rather than a
+            blue-green switch.
+
+      - alert: DiskSpaceLow
+        expr: node_filesystem_avail_bytes / node_filesystem_size_bytes < 0.1
+        for: 5m
+        labels:
+          severity: warning
+          environment: infrastructure
+          service: node
+        annotations:
+          summary: "Disk space below 10% on {{ $labels.instance }}"
+          description: >-
+            Available disk space on {{ $labels.mountpoint }} is
+            {{ $value | printf "%.0f" }}% of total. Threshold: 10%.

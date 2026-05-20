@@ -1,0 +1,186 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: yomu
+
+rule_files:
+  - "rules/*.yml"
+
+scrape_configs:
+  - job_name: prometheus
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - prometheus:9090
+        labels:
+          environment: infrastructure
+
+  - job_name: traefik
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - traefik:8080
+        labels:
+          environment: infrastructure
+          service: traefik
+
+  - job_name: java-blue
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - java-blue:8080
+        labels:
+          environment: blue
+          service: java
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        target_label: __name__
+      - source_labels: [environment]
+        target_label: environment
+      - regex: (.*)
+        replacement: blue
+        target_label: slot
+
+  - job_name: java-green
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - java-green:8080
+        labels:
+          environment: green
+          service: java
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        target_label: __name__
+      - source_labels: [environment]
+        target_label: environment
+      - regex: (.*)
+        replacement: green
+        target_label: slot
+
+  - job_name: rust-blue
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - rust-blue:8080
+        labels:
+          environment: blue
+          service: rust
+    metric_relabel_configs:
+      - source_labels: [environment]
+        target_label: environment
+      - regex: (.*)
+        replacement: blue
+        target_label: slot
+
+  - job_name: rust-green
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - rust-green:8080
+        labels:
+          environment: green
+          service: rust
+    metric_relabel_configs:
+      - source_labels: [environment]
+        target_label: environment
+      - regex: (.*)
+        replacement: green
+        target_label: slot
+
+  - job_name: frontend-blue
+    metrics_path: /api/metrics
+    static_configs:
+      - targets:
+          - frontend-blue:3000
+        labels:
+          environment: blue
+          service: frontend
+    metric_relabel_configs:
+      - source_labels: [environment]
+        target_label: environment
+      - regex: (.*)
+        replacement: blue
+        target_label: slot
+
+  - job_name: frontend-green
+    metrics_path: /api/metrics
+    static_configs:
+      - targets:
+          - frontend-green:3000
+        labels:
+          environment: green
+          service: frontend
+    metric_relabel_configs:
+      - source_labels: [environment]
+        target_label: environment
+      - regex: (.*)
+        replacement: green
+        target_label: slot
+
+  # ──────────────── Staging ────────────────
+  - job_name: java-staging
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - java-staging:8080
+        labels:
+          environment: staging
+          service: java
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        target_label: __name__
+      - source_labels: [environment]
+        target_label: environment
+      - regex: (.*)
+        replacement: staging
+        target_label: slot
+
+  - job_name: rust-staging
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - rust-staging:8080
+        labels:
+          environment: staging
+          service: rust
+    metric_relabel_configs:
+      - source_labels: [environment]
+        target_label: environment
+      - regex: (.*)
+        replacement: staging
+        target_label: slot
+
+  - job_name: frontend-staging
+    metrics_path: /api/metrics
+    static_configs:
+      - targets:
+          - frontend-staging:3000
+        labels:
+          environment: staging
+          service: frontend
+    metric_relabel_configs:
+      - source_labels: [environment]
+        target_label: environment
+      - regex: (.*)
+        replacement: staging
+        target_label: slot
+
+  - job_name: postgres
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - postgres-exporter:9187
+        labels:
+          environment: infrastructure
+          service: postgres
+
+  - job_name: redis
+    metrics_path: /metrics
+    static_configs:
+      - targets:
+          - redis-exporter:9121
+        labels:
+          environment: infrastructure
+          service: redis
