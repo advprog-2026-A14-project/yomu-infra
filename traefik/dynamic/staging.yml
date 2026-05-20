@@ -1,0 +1,50 @@
+http:
+  routers:
+    staging-frontend-router:
+      rule: "Host(`staging.yomu.my.id`)"
+      service: frontend-staging
+      entryPoints:
+        - web
+
+    staging-java-router:
+      rule: "Host(`staging.yomu.my.id`) && PathPrefix(`/api/java`)"
+      service: java-staging
+      entryPoints:
+        - web
+      middlewares:
+        - staging-strip-java-prefix
+
+    staging-rust-router:
+      rule: "Host(`staging.yomu.my.id`) && PathPrefix(`/api/rust`)"
+      service: rust-staging
+      entryPoints:
+        - web
+      middlewares:
+        - staging-strip-rust-prefix
+
+  middlewares:
+    staging-strip-java-prefix:
+      stripPrefix:
+        prefixes:
+          - "/api/java"
+
+    staging-strip-rust-prefix:
+      stripPrefix:
+        prefixes:
+          - "/api/rust"
+
+  services:
+    frontend-staging:
+      loadBalancer:
+        servers:
+          - url: "http://frontend-staging:3000"
+
+    java-staging:
+      loadBalancer:
+        servers:
+          - url: "http://java-staging:8080"
+
+    rust-staging:
+      loadBalancer:
+        servers:
+          - url: "http://rust-staging:8080"
