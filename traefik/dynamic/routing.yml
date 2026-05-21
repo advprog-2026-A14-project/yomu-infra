@@ -1,94 +1,35 @@
 http:
   routers:
-    frontend-router:
-      rule: "Host(`yomu.my.id`) || PathPrefix(`/`)"
-      service: frontend-blue
-      entryPoints:
-        - web
-
-    java-router:
-      rule: "PathPrefix(`/api/java`)"
-      service: java-blue
-      entryPoints:
-        - web
-      middlewares:
-        - strip-java-prefix
-
-    rust-router:
-      rule: "PathPrefix(`/api/rust`)"
-      service: rust-blue
-      entryPoints:
-        - web
-      middlewares:
-        - strip-rust-prefix
-
-    java-subdomain:
-      rule: "Host(`java.yomu.my.id`)"
-      service: java-blue
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt
-
-    rust-subdomain:
-      rule: "Host(`rust.yomu.my.id`)"
-      service: rust-blue
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: letsencrypt
-
     grafana-router:
-      rule: "Host(`monitoring.yomu.my.id`) || PathPrefix(`/grafana`)"
-      service: grafana@docker
+      rule: "Host(`monitoring.yomu.my.id`)"
+      service: grafana-svc
       entryPoints:
         - websecure
-      tls:
-        certResolver: letsencrypt
-      middlewares:
-        - strip-grafana-prefix
 
     prometheus-router:
-      rule: "PathPrefix(`/prometheus`)"
-      service: prometheus@docker
+      rule: "Host(`monitoring.yomu.my.id`) && PathPrefix(`/prometheus`)"
+      service: prometheus-svc
+      entryPoints:
+        - websecure
+
+    http-catchall:
+      rule: "HostRegexp(`{host:.+}`)"
+      service: traefik-echo
       entryPoints:
         - web
-      middlewares:
-        - strip-prometheus-prefix
-
-  middlewares:
-    strip-java-prefix:
-      stripPrefix:
-        prefixes:
-          - "/api/java"
-
-    strip-rust-prefix:
-      stripPrefix:
-        prefixes:
-          - "/api/rust"
-
-    strip-grafana-prefix:
-      stripPrefix:
-        prefixes:
-          - "/grafana"
-
-    strip-prometheus-prefix:
-      stripPrefix:
-        prefixes:
-          - "/prometheus"
 
   services:
-    frontend-blue:
+    grafana-svc:
       loadBalancer:
         servers:
-          - url: "http://frontend-blue:3000"
+          - url: "http://grafana:3000"
 
-    java-blue:
+    prometheus-svc:
       loadBalancer:
         servers:
-          - url: "http://java-blue:8080"
+          - url: "http://prometheus:9090"
 
-    rust-blue:
+    traefik-echo:
       loadBalancer:
         servers:
-          - url: "http://rust-blue:8080"
+          - url: "http://127.0.0.1:9999"
