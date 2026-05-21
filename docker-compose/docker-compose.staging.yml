@@ -1,6 +1,6 @@
 services:
   frontend-staging:
-    image: yomu-frontend:${STAGING_IMAGE_TAG:-staging}
+    image: ghcr.io/advprog-2026-a14-project/yomu-frontend:${STAGING_IMAGE_TAG:-staging}
     container_name: frontend-staging
     restart: unless-stopped
     environment:
@@ -24,10 +24,11 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '0.5'
           memory: 512M
 
   java-staging:
-    image: yomu-backend-java:${STAGING_IMAGE_TAG:-staging}
+    image: ghcr.io/advprog-2026-a14-project/yomu-backend-java:${STAGING_IMAGE_TAG:-staging}
     container_name: java-staging
     restart: unless-stopped
     environment:
@@ -55,10 +56,11 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '1.0'
           memory: 1G
 
   rust-staging:
-    image: yomu-backend-rust:${STAGING_IMAGE_TAG:-staging}
+    image: ghcr.io/advprog-2026-a14-project/yomu-backend-rust:${STAGING_IMAGE_TAG:-staging}
     container_name: rust-staging
     restart: unless-stopped
     environment:
@@ -89,6 +91,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '0.5'
           memory: 512M
 
 networks:
