@@ -71,6 +71,7 @@ services:
       JAVA_CORE_URL: http://java-green:8080
       JAVA_CORE_API_KEY: ${JAVA_CORE_API_KEY:?JAVA_CORE_API_KEY is required}
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      GRPC_PORT: "50051"
     networks:
       - yomu-green-network
       - yomu-shared-network
