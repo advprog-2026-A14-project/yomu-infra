@@ -29,14 +29,12 @@ fi
 
 echo "=== Deploying STAGING environment (image-tag: ${IMAGE_TAG}) ==="
 
-# Pull latest images first
 docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.staging.yml" pull frontend-staging java-staging rust-staging
 
-# Only recreate application containers — DB/Redis must NOT restart to avoid data loss.
 docker compose \
   -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \
   -f "${REPO_ROOT}/docker-compose/docker-compose.staging.yml" \
-  up -d --force-recreate frontend-staging java-staging rust-staging
+  up -d --force-recreate --no-deps frontend-staging java-staging rust-staging
 
 echo "Waiting for STAGING services to become healthy..."
 MAX_ATTEMPTS=60

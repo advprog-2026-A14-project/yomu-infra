@@ -29,12 +29,12 @@ fi
 
 echo "=== Deploying BLUE environment (image-tag: ${IMAGE_TAG}) ==="
 
-# Pull latest images first
 docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" pull frontend-blue java-blue rust-blue
 
-# Only recreate application containers — shared infra (postgres, redis, traefik)
-# must NOT restart to avoid breaking the active environment.
-docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" up -d --force-recreate frontend-blue java-blue rust-blue
+docker compose \
+  -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \
+  -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" \
+  up -d --force-recreate --no-deps frontend-blue java-blue rust-blue
 
 echo "Waiting for BLUE services to become healthy..."
 MAX_ATTEMPTS=60
