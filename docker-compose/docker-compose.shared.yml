@@ -166,7 +166,7 @@ services:
       - "127.0.0.1:3200:3200"
     volumes:
       - ../tempo/tempo-config.yml:/etc/tempo/tempo-config.yml:ro
-      - tempo_data:/tmp/tempo
+      - tempo_data:/var/tempo
     networks:
       - yomu-shared-network
     healthcheck:
