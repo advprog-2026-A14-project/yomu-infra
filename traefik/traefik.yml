@@ -8,7 +8,7 @@ ping: {}
 
 providers:
   docker:
-    exposedByDefault: false
+    enabled: false
   file:
     directory: /etc/traefik/dynamic
     watch: true
