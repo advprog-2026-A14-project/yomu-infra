@@ -24,6 +24,30 @@ http:
       tls:
         certResolver: letsencrypt
 
+    frontend-staging-router:
+      rule: "Host(`staging.yomu.my.id`)"
+      service: frontend-staging-svc
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+
+    java-staging-router:
+      rule: "Host(`java-staging.yomu.my.id`)"
+      service: java-staging-svc
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+
+    rust-staging-router:
+      rule: "Host(`rust-staging.yomu.my.id`)"
+      service: rust-staging-svc
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+
     grafana-router:
       rule: "Host(`monitoring.yomu.my.id`)"
       service: grafana-svc
@@ -33,7 +57,7 @@ http:
         certResolver: letsencrypt
 
     prometheus-router:
-      rule: "Host(`monitoring.yomu.my.id`) && PathPrefix(`/prometheus`)"
+      rule: "Host(`monitoring.yomu.my.id`) \u0026\u0026 PathPrefix(`/prometheus`)"
       service: prometheus-svc
       middlewares:
         - strip-prometheus
@@ -69,6 +93,21 @@ http:
       loadBalancer:
         servers:
           - url: "http://rust-blue:8080"
+
+    frontend-staging-svc:
+      loadBalancer:
+        servers:
+          - url: "http://frontend-staging:3000"
+
+    java-staging-svc:
+      loadBalancer:
+        servers:
+          - url: "http://java-staging:8080"
+
+    rust-staging-svc:
+      loadBalancer:
+        servers:
+          - url: "http://rust-staging:8080"
 
     grafana-svc:
       loadBalancer:
