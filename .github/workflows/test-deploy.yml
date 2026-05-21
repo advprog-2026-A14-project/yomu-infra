@@ -3,19 +3,17 @@ name: Test Deployment Scripts
 on:
   pull_request:
     paths:
-      - "yomu-deployment/scripts/**"
-      - "yomu-deployment/docker-compose/**"
-      - "yomu-deployment/traefik/**"
-      - ".github/workflows/deploy-production.yml"
-      - ".github/workflows/deploy-staging.yml"
+      - "scripts/**"
+      - "docker-compose/**"
+      - "traefik/**"
+      - ".github/workflows/**"
   push:
     branches: [main]
     paths:
-      - "yomu-deployment/scripts/**"
-      - "yomu-deployment/docker-compose/**"
-      - "yomu-deployment/traefik/**"
-      - ".github/workflows/deploy-production.yml"
-      - ".github/workflows/deploy-staging.yml"
+      - "scripts/**"
+      - "docker-compose/**"
+      - "traefik/**"
+      - ".github/workflows/**"
 
 permissions:
   contents: read
@@ -35,7 +33,6 @@ jobs:
 
       - name: Run shellcheck on deployment scripts
         run: |
-          cd yomu-deployment
           shellcheck -x scripts/*.sh
 
   docker-compose-config:
@@ -50,7 +47,6 @@ jobs:
 
       - name: Create dummy .env for validation
         run: |
-          cd yomu-deployment
           cat > .env <<EOF
           POSTGRES_PASSWORD=dummy-secret
           JWT_SECRET=dummy-jwt-secret
@@ -61,24 +57,19 @@ jobs:
 
       - name: Validate docker-compose.blue.yml
         run: |
-          cd yomu-deployment
           docker compose -f docker-compose/docker-compose.blue.yml config > /dev/null
 
       - name: Validate docker-compose.green.yml
         run: |
-          cd yomu-deployment
           docker compose -f docker-compose/docker-compose.green.yml config > /dev/null
 
       - name: Validate docker-compose.staging.yml
         run: |
-          cd yomu-deployment
-          # Staging uses STAGING_IMAGE_TAG env var
           export STAGING_IMAGE_TAG=staging
           docker compose -f docker-compose/docker-compose.shared.yml -f docker-compose/docker-compose.staging.yml config > /dev/null
 
       - name: Validate docker-compose.shared.yml
         run: |
-          cd yomu-deployment
           docker compose -f docker-compose/docker-compose.shared.yml config > /dev/null
 
   validate-traefik-configs:
@@ -94,12 +85,10 @@ jobs:
 
       - name: Run yamllint on traefik configs
         run: |
-          cd yomu-deployment/traefik
           yamllint -d relaxed traefik.yml dynamic/
 
       - name: Run yamllint on other YAML files
         run: |
-          cd yomu-deployment
           yamllint -d relaxed prometheus/ grafana/ loki/ tempo/ otel/ || true
 
   workflow-syntax:
