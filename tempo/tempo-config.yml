@@ -1,7 +1,5 @@
 server:
   http_listen_port: 3200
-  grpc_listen_port: 9095
-  log_level: info
 
 distributor:
   receivers:
@@ -14,17 +12,7 @@ distributor:
 
 ingester:
   trace_idle_period: 10s
-  max_block_bytes: 1_000_000
   max_block_duration: 5m
-  complete_block_timeout: 5m
-  flush_check_period: 10s
-
-compactor:
-  compaction:
-    compaction_window: 1h
-    max_compaction_objects: 1000000
-    block_retention: 168h
-  working_directory: /tmp/tempo/compactor
 
 storage:
   trace:
@@ -33,26 +21,3 @@ storage:
       path: /tmp/tempo/blocks
     wal:
       path: /tmp/tempo/wal
-
-querier:
-  search:
-    query_timeout: 30s
-
-metrics_generator:
-  registry:
-    external_labels:
-      source: tempo
-      cluster: yomu
-  storage:
-    path: /tmp/tempo/generator
-    remote_write:
-      - url: http://prometheus:9090/api/v1/write
-        send_native_histograms: true
-
-overrides:
-  defaults:
-    metrics_generator:
-      processors:
-        - service-graphs
-        - span-metrics
-      generate_native_histograms: true
