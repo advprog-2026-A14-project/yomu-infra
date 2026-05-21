@@ -58,12 +58,12 @@ jobs:
       - name: Validate docker-compose.blue.yml
         run: |
           cp .env docker-compose/.env
-          docker compose -f docker-compose/docker-compose.blue.yml --env-file docker-compose/.env config > /dev/null
+          docker compose -f docker-compose/docker-compose.shared.yml -f docker-compose/docker-compose.blue.yml --env-file docker-compose/.env config > /dev/null
 
       - name: Validate docker-compose.green.yml
         run: |
           cp .env docker-compose/.env
-          docker compose -f docker-compose/docker-compose.green.yml --env-file docker-compose/.env config > /dev/null
+          docker compose -f docker-compose/docker-compose.shared.yml -f docker-compose/docker-compose.green.yml --env-file docker-compose/.env config > /dev/null
 
       - name: Validate docker-compose.staging.yml
         run: |
