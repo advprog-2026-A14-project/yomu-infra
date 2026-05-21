@@ -50,26 +50,27 @@ jobs:
             set -euo pipefail
             cd "${{ env.DEPLOY_DIR }}"
 
-            # Write secrets to .env if it doesn't exist
-            if [[ ! -f .env ]]; then
-              {
-                echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
-                echo "JWT_SECRET=${JWT_SECRET}"
-                echo "INTERNAL_API_KEY=${INTERNAL_API_KEY}"
-                echo "JAVA_CORE_API_KEY=${JAVA_CORE_API_KEY}"
-                echo "GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}"
-              } > .env
-            else
-              # Update secrets safely using sed with fallback to append
-              for var in POSTGRES_PASSWORD JWT_SECRET INTERNAL_API_KEY JAVA_CORE_API_KEY GRAFANA_ADMIN_PASSWORD; do
-                val="${!var}"
-                if grep -q "^${var}=" .env 2>/dev/null; then
-                  sed -i "s/^${var}=.*/${var}=${val}/" .env
-                else
-                  echo "${var}=${val}" >> .env
-                fi
-              done
-            fi
+            for var in POSTGRES_PASSWORD JWT_SECRET INTERNAL_API_KEY JAVA_CORE_API_KEY GRAFANA_ADMIN_PASSWORD; do
+              val="${!var}"
+              if [[ -z "${val}" ]]; then
+                echo "SKIP: ${var} is empty in GitHub Secrets — preserving existing .env value"
+                continue
+              fi
+              if grep -q "^${var}=" .env 2>/dev/null; then
+                sed -i "s/^${var}=.*/${var}=${val}/" .env
+              else
+                echo "${var}=${val}" >> .env
+              fi
+            done
+
+            for var in POSTGRES_PASSWORD JWT_SECRET INTERNAL_API_KEY JAVA_CORE_API_KEY GRAFANA_ADMIN_PASSWORD; do
+              current_val=$(grep "^${var}=" .env 2>/dev/null | cut -d'=' -f2-)
+              if [[ -z "${current_val}" ]]; then
+                echo "ERROR: ${var} is empty in .env — deployment blocked."
+                echo "Fix the ${var} GitHub Secret in yomu-infra repo before retrying."
+                exit 1
+              fi
+            done
 
             export STAGING_IMAGE_TAG="${IMAGE_TAG}"
             echo "Deploying staging with image tag: ${STAGING_IMAGE_TAG}"
