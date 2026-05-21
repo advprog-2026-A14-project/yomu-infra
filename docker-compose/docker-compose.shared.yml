@@ -10,7 +10,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ../traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ../traefik/dynamic:/etc/traefik/dynamic:ro
-      - traefik-acme:/etc/traefik/acme.json
+      - ./traefik/acme.json:/etc/traefik/acme.json
     networks:
       - yomu-shared-network
       - yomu-blue-network
@@ -264,7 +264,6 @@ volumes:
   grafana_data:
   loki_data:
   tempo_data:
-  traefik-acme:
 
 networks:
   yomu-shared-network:

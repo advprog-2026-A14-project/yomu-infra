@@ -1,0 +1,19 @@
+{
+  "letsencrypt": {
+    "Account": {
+      "Email": "admin@yomu.my.id",
+      "Registration": {
+        "body": {
+          "status": "valid",
+          "contact": [
+            "mailto:admin@yomu.my.id"
+          ]
+        },
+        "uri": "https://acme-v02.api.letsencrypt.org/acme/acct/placeholder"
+      },
+      "PrivateKey": "",
+      "KeyType": "4096"
+    },
+    "Certificates": []
+  }
+}
