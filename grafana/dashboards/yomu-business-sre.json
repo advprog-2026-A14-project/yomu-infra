@@ -1,0 +1,200 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Business & SRE metrics: login rate, registration rate, API errors, SLA tracking",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "Login Success Rate vs Error Rate",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {"expr": "rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",uri=~\".*/auth/login$\",status=\"2..\"}[1m])", "legendFormat": "{{job}} login success", "refId": "A"},
+        {"expr": "rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",uri=~\".*/auth/login$\",status=~\"4..|5..\"}[1m])", "legendFormat": "{{job}} login error", "refId": "B"}
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Registration Rate",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {"expr": "rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",uri=~\".*/auth/register$\",status=\"2..\"}[1m])", "legendFormat": "{{job}} register success", "refId": "A"}
+      ]
+    },
+    {
+      "id": 3,
+      "title": "API Availability (SLA 99.9% uptime)",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 4, "w": 8, "x": 0, "y": 8},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds", "fixed": "green"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": 0}, {"color": "yellow", "value": 99}, {"color": "green", "value": 99.9}]},
+          "unit": "percent"
+        }
+      },
+      "options": {"graphMode": "area", "colorMode": "background"},
+      "targets": [
+        {"expr": "(1 - (avg_over_time(up{job=~\"java-(blue|green|staging)\"}[1h]) < 1)) * 100", "legendFormat": "Java", "refId": "A"},
+        {"expr": "(1 - (avg_over_time(up{job=~\"rust-(blue|green|staging)\"}[1h]) < 1)) * 100", "legendFormat": "Rust", "refId": "B"},
+        {"expr": "(1 - (avg_over_time(up{job=~\"frontend-(blue|green|staging)\"}[1h]) < 1)) * 100", "legendFormat": "Frontend", "refId": "C"}
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Endpoint P99 Latency",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 8, "y": 8},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {"expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job=~\"java-(blue|green|staging)\", uri=~\".*/auth/.*\"}[1m]))) > 0", "legendFormat": "{{job}} auth p99", "refId": "A"},
+        {"expr": "histogram_quantile(0.99, sum by (le) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~\"rust-(blue|green|staging)\"}[1m]))) > 0", "legendFormat": "{{job}} rust p99", "refId": "B"}
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Google OAuth Login Rate",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {"expr": "rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",uri=~\".*/auth/login/google$\",status=\"2..\"}[1m])", "legendFormat": "{{job}} google login success", "refId": "A"}
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Quiz / Article Requests per Minute",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {"expr": "rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",uri=~\".*/quizzes/.*\"}[1m])", "legendFormat": "{{job}} quiz", "refId": "A"},
+        {"expr": "rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",uri=~\".*/articles/.*\"}[1m])", "legendFormat": "{{job}} article", "refId": "B"}
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Error Budget (5xx requests / total %)",
+      "type": "graph",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "percent"
+        }
+      },
+      "targets": [
+        {"expr": "(sum by (job) (rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",status=\"5..\"}[1m])) or on() vector(0)) / (sum by (job) (rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\"}[1m])) or on() vector(0)) * 100", "legendFormat": "{{job}}", "refId": "A"}
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Active Sessions / Logged-in Users",
+      "type": "stat",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "mappings": [],
+          "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": 0}]},
+          "unit": "short"
+        }
+      },
+      "options": {"graphMode": "area", "colorMode": "background"},
+      "targets": [
+        {"expr": "yomu_active_sessions_total{job=~\"java-(blue|green|staging)\"}", "legendFormat": "{{job}}", "refId": "A"}
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["business", "sre", "sla", "java", "rust"],
+  "templating": {
+    "list": [
+      {
+        "current": {"selected": false, "text": "Prometheus", "value": "Prometheus"},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Datasource",
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": {"from": "now-15m", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Yomu Business & SRE Metrics",
+  "uid": "yomu-business-sre",
+  "version": 1,
+  "weekStart": ""
+}

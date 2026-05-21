@@ -21,7 +21,7 @@ groups:
             following a recent deployment.
 
       - alert: ServiceDown
-        expr: up{job=~"frontend-(blue|green)|java-(blue|green)|rust-(blue|green)"} == 0
+        expr: up{job=~"frontend-(blue|green|staging)|java-(blue|green|staging)|rust-(blue|green|staging)"} == 0
         for: 1m
         labels:
           severity: critical
@@ -129,3 +129,95 @@ groups:
           description: >-
             JVM memory usage is at {{ $value | printf "%.0f" }}% for
             {{ $labels.instance }} ({{ $labels.environment }}). Threshold: 85%.
+
+      # ── Extended JVM Profiling Alerts ── 
+      - alert: JavaThreadsHigh
+        expr: jvm_threads_live_threads > 300
+        for: 5m
+        labels:
+          severity: warning
+          environment: "{{ $labels.environment }}"
+          service: java
+        annotations:
+          summary: "JVM thread count high on {{ $labels.instance }}"
+          description: >-
+            JVM live threads at {{ $value | printf "%.0f" }} ({{ $labels.environment }}). Threshold: 300.
+
+      - alert: JavaGCPauseTooLong
+        expr: jvm_gc_pause_seconds_max > 1
+        for: 2m
+        labels:
+          severity: warning
+          environment: "{{ $labels.environment }}"
+          service: java
+        annotations:
+          summary: "JVM GC pause exceeded 1s on {{ $labels.instance }}"
+          description: >-
+            GC pause max is {{ $value | printf "%.2f" }}s ({{ $labels.environment }}). Threshold: 1s.
+
+      # ── Database Profiling Alerts ──
+      - alert: DBCacheHitRatioLow
+        expr: yomu:db_pg_cache_hit_ratio < 95
+        for: 5m
+        labels:
+          severity: warning
+          environment: production
+          service: database
+        annotations:
+          summary: "PostgreSQL cache hit ratio low"
+          description: >-
+            Database cache hit ratio is {{ $value | printf "%.1f" }}% for {{ $labels.datname }}.
+            Threshold: 95%.
+
+      - alert: DBConnectionsHigh
+        expr: pg_stat_activity_count{datname=~"yomu_.*"} > 80
+        for: 2m
+        labels:
+          severity: warning
+          environment: production
+          service: database
+        annotations:
+          summary: "PostgreSQL connections high for {{ $labels.datname }}"
+          description: >-
+            Active connections: {{ $value | printf "%.0f" }} on {{ $labels.datname }}.
+            Threshold: 80.
+
+      # ── Rust / HTTP Profiling Alerts ──
+      - alert: RustP99LatencyHigh
+        expr: histogram_quantile(0.99, sum by (le) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~"rust-(blue|green|staging)"}[1m]))) > 2
+        for: 2m
+        labels:
+          severity: warning
+          environment: production
+          service: rust
+        annotations:
+          summary: "Rust API p99 latency high"
+          description: >-
+            Rust API p99 latency is {{ $value | printf "%.3f" }}s ({{ $labels.environment }}). Threshold: 2s.
+
+      # ── Business / SRE Alerts ──
+      - alert: LoginErrorRateHigh
+        expr: yomu:login_success_rate < 0.95
+        for: 5m
+        labels:
+          severity: warning
+          environment: production
+          service: auth
+        annotations:
+          summary: "Login success rate below 95%"
+          description: >-
+            Login success rate is {{ $value | humanizePercentage }} (1-min window).
+            Threshold: 95%.
+
+      - alert: SLAAvailabilityDropping
+        expr: yomu:sla_availability_1h < 99.9
+        for: 5m
+        labels:
+          severity: critical
+          environment: production
+          service: platform
+        annotations:
+          summary: "1h SLA availability dropped below 99.9%"
+          description: >-
+            Platform availability over the last hour is {{ $value | printf "%.3f" }}%.
+            Threshold: 99.9%.

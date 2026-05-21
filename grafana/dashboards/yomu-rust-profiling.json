@@ -1,0 +1,193 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Rust Axum HTTP metrics and runtime profiling, plus Rust Engine API performance",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP Request Rate (req/s per route)",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {"expr": "sum by (method, route) (rate(axum_prometheus_requests_total{job=~\"rust-(blue|green|staging)\"}[1m])) > 0", "legendFormat": "{{method}} {{route}}", "refId": "A"}
+      ]
+    },
+    {
+      "id": 2,
+      "title": "HTTP Latency P50 / P99",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "s"
+        }
+      },
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum by (le, route) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~\"rust-(blue|green|staging)\"}[1m]))) > 0", "legendFormat": "p50 {{route}}", "refId": "A"},
+        {"expr": "histogram_quantile(0.99, sum by (le, route) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~\"rust-(blue|green|staging)\"}[1m]))) > 0", "legendFormat": "p99 {{route}}", "refId": "B"}
+      ]
+    },
+    {
+      "id": 3,
+      "title": "HTTP Status Code Distribution",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "reqps"
+        }
+      },
+      "targets": [
+        {"expr": "sum by (status) (rate(axum_prometheus_requests_total{job=~\"rust-(blue|green|staging)\"}[1m]))", "legendFormat": "HTTP {{status}}", "refId": "A"}
+      ]
+    },
+    {
+      "id": 4,
+      "title": "HTTP Error Rate (4xx + 5xx / total %)",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "percent"
+        }
+      },
+      "targets": [
+        {"expr": "(sum by (job) (rate(axum_prometheus_requests_total{job=~\"rust-(blue|green|staging)\",status=~\"4..|5..\"}[1m])) or on() vector(0)) / (sum by (job) (rate(axum_prometheus_requests_total{job=~\"rust-(blue|green|staging)\"}[1m])) or on() vector(0)) * 100", "legendFormat": "{{job}} error %", "refId": "A"}
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Rust → CPU Utilization",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "percentunit"
+        }
+      },
+      "targets": [
+        {"expr": "process_cpu_seconds_total{job=~\"rust-(blue|green|staging)\"} / 1e9", "legendFormat": "{{job}}", "refId": "A"}
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Rust → Resident Memory (RSS)",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "bytes"
+        }
+      },
+      "targets": [
+        {"expr": "process_resident_memory_bytes{job=~\"rust-(blue|green|staging)\"}", "legendFormat": "{{job}} RSS", "refId": "A"}
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Rust → Tokio Active Tasks",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {"expr": "tokio_tasks_count{job=~\"rust-(blue|green|staging)\"}", "legendFormat": "{{job}} - active tasks", "refId": "A"}
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Rust → Custom Business Metrics",
+      "type": "timeseries",
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "palette-classic"},
+          "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
+          "unit": "short"
+        }
+      },
+      "targets": [
+        {"expr": "rate(yomu_leaderboard_requests_total{job=~\"rust-(blue|green|staging)\"}[1m])", "legendFormat": "{{job}} leaderboard/s", "refId": "A"},
+        {"expr": "rate(yomu_clan_requests_total{job=~\"rust-(blue|green|staging)\"}[1m])", "legendFormat": "{{job}} clan/s", "refId": "B"}
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["profiling", "rust", "http", "sre"],
+  "templating": {
+    "list": [
+      {
+        "current": {"selected": false, "text": "Prometheus", "value": "Prometheus"},
+        "hide": 0,
+        "includeAll": false,
+        "label": "Datasource",
+        "name": "DS_PROMETHEUS",
+        "options": [],
+        "query": "prometheus",
+        "refresh": 1,
+        "regex": "",
+        "type": "datasource"
+      }
+    ]
+  },
+  "time": {"from": "now-15m", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Yomu Rust HTTP \u0026 Engine Profiling",
+  "uid": "yomu-rust-profiling",
+  "version": 1,
+  "weekStart": ""
+}
