@@ -16,9 +16,11 @@ entryPoints:
     address: ":443"
 
 providers:
-  docker:
+  swarm:
     exposedByDefault: false
     network: yomu-overlay-net
+    refreshSeconds: 5
+    allowEmptyServices: true
   file:
     directory: /etc/traefik/dynamic
     watch: true

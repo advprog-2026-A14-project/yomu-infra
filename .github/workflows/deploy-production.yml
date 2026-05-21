@@ -41,33 +41,25 @@ jobs:
           else
             echo "image_tag=main" >> "$GITHUB_OUTPUT"
           fi
-
-      - name: Update .env and deploy swarm stack
+      - name: Deploy swarm stack
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ env.GCP_HOST }}
           username: ${{ env.GCP_USER }}
           key: ${{ secrets.GCP_SSH_KEY }}
-          envs: IMAGE_TAG,DEPLOY_DIR
+          envs: IMAGE_TAG
           script: |
             set -euo pipefail
-            cd "${DEPLOY_DIR}"
-
-            # Ensure .env exists and has sane defaults (do NOT overwrite with empty secrets)
-            if [[ ! -f .env ]]; then
-              touch .env
-            fi
-            # Write image tag override if needed
+            cd /opt/yomu
             export IMAGE_TAG="${IMAGE_TAG}"
-            echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
-
             echo "=== Deploying Swarm stack with image tag: ${IMAGE_TAG} ==="
             docker stack deploy -c docker-compose/docker-compose.swarm.yml yomu
+            echo "=== Deployment complete ==="
         env:
           IMAGE_TAG: ${{ steps.dispatch.outputs.image_tag }}
 
       - name: Wait for rolling update
-        run: sleep 45
+        run: sleep 120
 
       - name: Smoke test endpoints
         uses: appleboy/ssh-action@v1
@@ -77,7 +69,6 @@ jobs:
           key: ${{ secrets.GCP_SSH_KEY }}
           script: |
             set -euo pipefail
-
             PASS=0
             FAIL=0
 
@@ -106,4 +97,6 @@ jobs:
             fi
 
             echo "Smoke tests: ${PASS} passed, ${FAIL} failed"
+            echo "If failed, check: docker service logs yomu_java / yomu_rust / yomu_frontend"
+            echo "Verify .env on host: grep 'JWT_SECRET' /opt/yomu/.env"
             [[ ${FAIL} -eq 0 ]] || exit 1
