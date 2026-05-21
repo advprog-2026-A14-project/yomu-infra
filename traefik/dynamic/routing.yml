@@ -39,10 +39,12 @@ http:
         certResolver: letsencrypt
 
     grafana-router:
-      rule: "PathPrefix(`/grafana`)"
+      rule: "Host(`monitoring.yomu.my.id`) || PathPrefix(`/grafana`)"
       service: grafana@docker
       entryPoints:
-        - web
+        - websecure
+      tls:
+        certResolver: letsencrypt
       middlewares:
         - strip-grafana-prefix
 
