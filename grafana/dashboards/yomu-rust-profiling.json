@@ -39,7 +39,7 @@
         }
       },
       "targets": [
-        {"expr": "sum by (method, route) (rate(axum_prometheus_requests_total{job=~\"rust-(blue|green|staging)\"}[1m])) > 0", "legendFormat": "{{method}} {{route}}", "refId": "A"}
+        {"expr": "sum by (method, route) (rate(axum_prometheus_requests_total{job=~\"rust|rust-staging\"}[1m])) > 0", "legendFormat": "{{method}} {{route}}", "refId": "A"}
       ]
     },
     {
@@ -56,8 +56,8 @@
         }
       },
       "targets": [
-        {"expr": "histogram_quantile(0.50, sum by (le, route) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~\"rust-(blue|green|staging)\"}[1m]))) > 0", "legendFormat": "p50 {{route}}", "refId": "A"},
-        {"expr": "histogram_quantile(0.99, sum by (le, route) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~\"rust-(blue|green|staging)\"}[1m]))) > 0", "legendFormat": "p99 {{route}}", "refId": "B"}
+        {"expr": "histogram_quantile(0.50, sum by (le, route) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~\"rust|rust-staging\"}[1m]))) > 0", "legendFormat": "p50 {{route}}", "refId": "A"},
+        {"expr": "histogram_quantile(0.99, sum by (le, route) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~\"rust|rust-staging\"}[1m]))) > 0", "legendFormat": "p99 {{route}}", "refId": "B"}
       ]
     },
     {
@@ -74,7 +74,7 @@
         }
       },
       "targets": [
-        {"expr": "sum by (status) (rate(axum_prometheus_requests_total{job=~\"rust-(blue|green|staging)\"}[1m]))", "legendFormat": "HTTP {{status}}", "refId": "A"}
+        {"expr": "sum by (status) (rate(axum_prometheus_requests_total{job=~\"rust|rust-staging\"}[1m]))", "legendFormat": "HTTP {{status}}", "refId": "A"}
       ]
     },
     {
@@ -91,7 +91,7 @@
         }
       },
       "targets": [
-        {"expr": "(sum by (job) (rate(axum_prometheus_requests_total{job=~\"rust-(blue|green|staging)\",status=~\"4..|5..\"}[1m])) or on() vector(0)) / (sum by (job) (rate(axum_prometheus_requests_total{job=~\"rust-(blue|green|staging)\"}[1m])) or on() vector(0)) * 100", "legendFormat": "{{job}} error %", "refId": "A"}
+        {"expr": "(sum by (job) (rate(axum_prometheus_requests_total{job=~\"rust|rust-staging\",status=~\"4..|5..\"}[1m])) or on() vector(0)) / (sum by (job) (rate(axum_prometheus_requests_total{job=~\"rust|rust-staging\"}[1m])) or on() vector(0)) * 100", "legendFormat": "{{job}} error %", "refId": "A"}
       ]
     },
     {
@@ -108,7 +108,7 @@
         }
       },
       "targets": [
-        {"expr": "process_cpu_seconds_total{job=~\"rust-(blue|green|staging)\"} / 1e9", "legendFormat": "{{job}}", "refId": "A"}
+        {"expr": "process_cpu_seconds_total{job=~\"rust|rust-staging\"} / 1e9", "legendFormat": "{{job}}", "refId": "A"}
       ]
     },
     {
@@ -125,7 +125,7 @@
         }
       },
       "targets": [
-        {"expr": "process_resident_memory_bytes{job=~\"rust-(blue|green|staging)\"}", "legendFormat": "{{job}} RSS", "refId": "A"}
+        {"expr": "process_resident_memory_bytes{job=~\"rust|rust-staging\"}", "legendFormat": "{{job}} RSS", "refId": "A"}
       ]
     },
     {
@@ -142,7 +142,7 @@
         }
       },
       "targets": [
-        {"expr": "tokio_tasks_count{job=~\"rust-(blue|green|staging)\"}", "legendFormat": "{{job}} - active tasks", "refId": "A"}
+        {"expr": "tokio_tasks_count{job=~\"rust|rust-staging\"}", "legendFormat": "{{job}} - active tasks", "refId": "A"}
       ]
     },
     {
@@ -159,8 +159,8 @@
         }
       },
       "targets": [
-        {"expr": "rate(yomu_leaderboard_requests_total{job=~\"rust-(blue|green|staging)\"}[1m])", "legendFormat": "{{job}} leaderboard/s", "refId": "A"},
-        {"expr": "rate(yomu_clan_requests_total{job=~\"rust-(blue|green|staging)\"}[1m])", "legendFormat": "{{job}} clan/s", "refId": "B"}
+        {"expr": "rate(yomu_leaderboard_requests_total{job=~\"rust|rust-staging\"}[1m])", "legendFormat": "{{job}} leaderboard/s", "refId": "A"},
+        {"expr": "rate(yomu_clan_requests_total{job=~\"rust|rust-staging\"}[1m])", "legendFormat": "{{job}} clan/s", "refId": "B"}
       ]
     }
   ],

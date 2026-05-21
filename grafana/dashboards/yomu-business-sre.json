@@ -39,8 +39,8 @@
         }
       },
       "targets": [
-        {"expr": "rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",uri=~\".*/auth/login$\",status=\"2..\"}[1m])", "legendFormat": "{{job}} login success", "refId": "A"},
-        {"expr": "rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",uri=~\".*/auth/login$\",status=~\"4..|5..\"}[1m])", "legendFormat": "{{job}} login error", "refId": "B"}
+        {"expr": "rate(http_server_requests_seconds_count{job=~\"java|java-staging\",uri=~\".*/auth/login$\",status=\"2..\"}[1m])", "legendFormat": "{{job}} login success", "refId": "A"},
+        {"expr": "rate(http_server_requests_seconds_count{job=~\"java|java-staging\",uri=~\".*/auth/login$\",status=~\"4..|5..\"}[1m])", "legendFormat": "{{job}} login error", "refId": "B"}
       ]
     },
     {
@@ -57,7 +57,7 @@
         }
       },
       "targets": [
-        {"expr": "rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",uri=~\".*/auth/register$\",status=\"2..\"}[1m])", "legendFormat": "{{job}} register success", "refId": "A"}
+        {"expr": "rate(http_server_requests_seconds_count{job=~\"java|java-staging\",uri=~\".*/auth/register$\",status=\"2..\"}[1m])", "legendFormat": "{{job}} register success", "refId": "A"}
       ]
     },
     {
@@ -76,9 +76,9 @@
       },
       "options": {"graphMode": "area", "colorMode": "background"},
       "targets": [
-        {"expr": "(1 - (avg_over_time(up{job=~\"java-(blue|green|staging)\"}[1h]) < 1)) * 100", "legendFormat": "Java", "refId": "A"},
-        {"expr": "(1 - (avg_over_time(up{job=~\"rust-(blue|green|staging)\"}[1h]) < 1)) * 100", "legendFormat": "Rust", "refId": "B"},
-        {"expr": "(1 - (avg_over_time(up{job=~\"frontend-(blue|green|staging)\"}[1h]) < 1)) * 100", "legendFormat": "Frontend", "refId": "C"}
+        {"expr": "(1 - (avg_over_time(up{job=~\"java|java-staging\"}[1h]) < 1)) * 100", "legendFormat": "Java", "refId": "A"},
+        {"expr": "(1 - (avg_over_time(up{job=~\"rust|rust-staging\"}[1h]) < 1)) * 100", "legendFormat": "Rust", "refId": "B"},
+        {"expr": "(1 - (avg_over_time(up{job=~\"frontend|frontend-staging\"}[1h]) < 1)) * 100", "legendFormat": "Frontend", "refId": "C"}
       ]
     },
     {
@@ -95,8 +95,8 @@
         }
       },
       "targets": [
-        {"expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job=~\"java-(blue|green|staging)\", uri=~\".*/auth/.*\"}[1m]))) > 0", "legendFormat": "{{job}} auth p99", "refId": "A"},
-        {"expr": "histogram_quantile(0.99, sum by (le) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~\"rust-(blue|green|staging)\"}[1m]))) > 0", "legendFormat": "{{job}} rust p99", "refId": "B"}
+        {"expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job=~\"java|java-staging\", uri=~\".*/auth/.*\"}[1m]))) > 0", "legendFormat": "{{job}} auth p99", "refId": "A"},
+        {"expr": "histogram_quantile(0.99, sum by (le) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~\"rust|rust-staging\"}[1m]))) > 0", "legendFormat": "{{job}} rust p99", "refId": "B"}
       ]
     },
     {
@@ -113,7 +113,7 @@
         }
       },
       "targets": [
-        {"expr": "rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",uri=~\".*/auth/login/google$\",status=\"2..\"}[1m])", "legendFormat": "{{job}} google login success", "refId": "A"}
+        {"expr": "rate(http_server_requests_seconds_count{job=~\"java|java-staging\",uri=~\".*/auth/login/google$\",status=\"2..\"}[1m])", "legendFormat": "{{job}} google login success", "refId": "A"}
       ]
     },
     {
@@ -130,8 +130,8 @@
         }
       },
       "targets": [
-        {"expr": "rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",uri=~\".*/quizzes/.*\"}[1m])", "legendFormat": "{{job}} quiz", "refId": "A"},
-        {"expr": "rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",uri=~\".*/articles/.*\"}[1m])", "legendFormat": "{{job}} article", "refId": "B"}
+        {"expr": "rate(http_server_requests_seconds_count{job=~\"java|java-staging\",uri=~\".*/quizzes/.*\"}[1m])", "legendFormat": "{{job}} quiz", "refId": "A"},
+        {"expr": "rate(http_server_requests_seconds_count{job=~\"java|java-staging\",uri=~\".*/articles/.*\"}[1m])", "legendFormat": "{{job}} article", "refId": "B"}
       ]
     },
     {
@@ -148,7 +148,7 @@
         }
       },
       "targets": [
-        {"expr": "(sum by (job) (rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\",status=\"5..\"}[1m])) or on() vector(0)) / (sum by (job) (rate(http_server_requests_seconds_count{job=~\"java-(blue|green|staging)\"}[1m])) or on() vector(0)) * 100", "legendFormat": "{{job}}", "refId": "A"}
+        {"expr": "(sum by (job) (rate(http_server_requests_seconds_count{job=~\"java|java-staging\",status=\"5..\"}[1m])) or on() vector(0)) / (sum by (job) (rate(http_server_requests_seconds_count{job=~\"java|java-staging\"}[1m])) or on() vector(0)) * 100", "legendFormat": "{{job}}", "refId": "A"}
       ]
     },
     {
@@ -167,7 +167,7 @@
       },
       "options": {"graphMode": "area", "colorMode": "background"},
       "targets": [
-        {"expr": "yomu_active_sessions_total{job=~\"java-(blue|green|staging)\"}", "legendFormat": "{{job}}", "refId": "A"}
+        {"expr": "yomu_active_sessions_total{job=~\"java|java-staging\"}", "legendFormat": "{{job}}", "refId": "A"}
       ]
     }
   ],

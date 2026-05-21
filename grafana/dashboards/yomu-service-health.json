@@ -32,7 +32,7 @@
     },
     {
       "id": 2,
-      "title": "frontend-blue",
+      "title": "frontend",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 4, "w": 4, "x": 0, "y": 1 },
@@ -45,11 +45,11 @@
         }
       },
       "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto" },
-      "targets": [{ "expr": "up{job=\"frontend-blue\"}", "legendFormat": "frontend-blue", "refId": "A" }]
+      "targets": [{ "expr": "up{job=\"frontend\"}", "legendFormat": "frontend", "refId": "A" }]
     },
     {
       "id": 3,
-      "title": "frontend-green",
+      "title": "frontend",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 4, "w": 4, "x": 4, "y": 1 },
@@ -62,11 +62,11 @@
         }
       },
       "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto" },
-      "targets": [{ "expr": "up{job=\"frontend-green\"}", "legendFormat": "frontend-green", "refId": "A" }]
+      "targets": [{ "expr": "up{job=\"frontend\"}", "legendFormat": "frontend", "refId": "A" }]
     },
     {
       "id": 4,
-      "title": "java-blue",
+      "title": "java",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 4, "w": 4, "x": 8, "y": 1 },
@@ -79,11 +79,11 @@
         }
       },
       "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto" },
-      "targets": [{ "expr": "up{job=\"java-blue\"}", "legendFormat": "java-blue", "refId": "A" }]
+      "targets": [{ "expr": "up{job=\"java\"}", "legendFormat": "java", "refId": "A" }]
     },
     {
       "id": 5,
-      "title": "java-green",
+      "title": "java",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 4, "w": 4, "x": 12, "y": 1 },
@@ -96,11 +96,11 @@
         }
       },
       "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto" },
-      "targets": [{ "expr": "up{job=\"java-green\"}", "legendFormat": "java-green", "refId": "A" }]
+      "targets": [{ "expr": "up{job=\"java\"}", "legendFormat": "java", "refId": "A" }]
     },
     {
       "id": 6,
-      "title": "rust-blue",
+      "title": "rust",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 4, "w": 4, "x": 16, "y": 1 },
@@ -113,11 +113,11 @@
         }
       },
       "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto" },
-      "targets": [{ "expr": "up{job=\"rust-blue\"}", "legendFormat": "rust-blue", "refId": "A" }]
+      "targets": [{ "expr": "up{job=\"rust\"}", "legendFormat": "rust", "refId": "A" }]
     },
     {
       "id": 7,
-      "title": "rust-green",
+      "title": "rust",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 4, "w": 4, "x": 20, "y": 1 },
@@ -130,7 +130,7 @@
         }
       },
       "options": { "colorMode": "background", "graphMode": "none", "textMode": "auto" },
-      "targets": [{ "expr": "up{job=\"rust-green\"}", "legendFormat": "rust-green", "refId": "A" }]
+      "targets": [{ "expr": "up{job=\"rust\"}", "legendFormat": "rust", "refId": "A" }]
     },
     {
       "id": 10,
