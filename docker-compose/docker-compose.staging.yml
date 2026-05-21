@@ -8,7 +8,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: yomu_db_staging
     volumes:
-      - postgres_staging_data:/var/lib/postgresql/data
+      - postgres_staging_data:/var/lib/postgresql
+      - ../scripts/init-databases.sql:/docker-entrypoint-initdb.d/02-init-databases.sql:ro
     networks:
       - yomu-staging-network
     healthcheck:
