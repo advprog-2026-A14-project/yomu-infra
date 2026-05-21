@@ -87,9 +87,9 @@ fi
 
 echo ""
 echo "--- Endpoint Checks ---"
-check "Frontend (http://localhost)" "curl -sf --max-time 5 http://localhost"
-check "Java API (/api/java/actuator/health/readiness)" "curl -sf --max-time 5 http://localhost/api/java/actuator/health/readiness"
-check "Rust API (/api/rust/health)" "curl -sf --max-time 5 http://localhost/api/rust/health"
+check "Frontend (https://yomu.my.id)" "curl -sf --max-time 5 -k -L https://yomu.my.id/"
+check "Java API (https://java.yomu.my.id/actuator/health/readiness)" "curl -sf --max-time 5 -k https://java.yomu.my.id/actuator/health/readiness"
+check "Rust API (https://rust.yomu.my.id/health)" "curl -sf --max-time 5 -k https://rust.yomu.my.id/health"
 echo ""
 
 echo "============================================"

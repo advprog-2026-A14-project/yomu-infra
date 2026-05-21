@@ -58,7 +58,7 @@ echo "Running smoke tests..."
 SMOKE_PASS=0
 SMOKE_FAIL=0
 
-if curl -sf --max-time 5 http://localhost/api/java/actuator/health/readiness > /dev/null 2>&1; then
+if curl -sf --max-time 5 -k https://java.yomu.my.id/actuator/health/readiness > /dev/null 2>&1; then
   echo "  [PASS] Java API health endpoint"
   SMOKE_PASS=$((SMOKE_PASS + 1))
 else
@@ -66,7 +66,7 @@ else
   SMOKE_FAIL=$((SMOKE_FAIL + 1))
 fi
 
-if curl -sf --max-time 5 http://localhost/api/rust/health > /dev/null 2>&1; then
+if curl -sf --max-time 5 -k https://rust.yomu.my.id/health > /dev/null 2>&1; then
   echo "  [PASS] Rust API health endpoint"
   SMOKE_PASS=$((SMOKE_PASS + 1))
 else
@@ -74,7 +74,7 @@ else
   SMOKE_FAIL=$((SMOKE_FAIL + 1))
 fi
 
-if curl -sf --max-time 5 http://localhost > /dev/null 2>&1; then
+if curl -sf --max-time 5 -k -L https://yomu.my.id/ > /dev/null 2>&1; then
   echo "  [PASS] Frontend"
   SMOKE_PASS=$((SMOKE_PASS + 1))
 else

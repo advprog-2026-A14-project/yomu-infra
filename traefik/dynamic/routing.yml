@@ -8,16 +8,16 @@ http:
       tls:
         certResolver: letsencrypt
 
-    api-java-router:
-      rule: "Host(`yomu.my.id`) && PathPrefix(`/api/java`)"
+    java-router:
+      rule: "Host(`java.yomu.my.id`)"
       service: java-blue-svc
       entryPoints:
         - websecure
       tls:
         certResolver: letsencrypt
 
-    api-rust-router:
-      rule: "Host(`yomu.my.id`) && PathPrefix(`/api/rust`)"
+    rust-router:
+      rule: "Host(`rust.yomu.my.id`)"
       service: rust-blue-svc
       entryPoints:
         - websecure
@@ -35,6 +35,8 @@ http:
     prometheus-router:
       rule: "Host(`monitoring.yomu.my.id`) && PathPrefix(`/prometheus`)"
       service: prometheus-svc
+      middlewares:
+        - strip-prometheus
       entryPoints:
         - websecure
       tls:
@@ -45,6 +47,12 @@ http:
       service: traefik-echo
       entryPoints:
         - web
+
+  middlewares:
+    strip-prometheus:
+      stripPrefix:
+        prefixes:
+          - /prometheus
 
   services:
     frontend-blue-svc:
