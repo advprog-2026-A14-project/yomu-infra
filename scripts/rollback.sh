@@ -46,7 +46,7 @@ if [[ ! -f "${COMPOSE_FILE}" ]]; then
 fi
 
 echo "Verifying ${TARGET_ENV^^} services are healthy..."
-SERVICES_RUNNING=$(docker compose -f "${COMPOSE_FILE}" ps --format '{{.Name}} {{.Health}}' 2>/dev/null || true)
+  SERVICES_RUNNING=$(docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" -f "${COMPOSE_FILE}" ps --format '{{.Name}} {{.Health}}' 2>/dev/null || true)
 
 if [[ -z "${SERVICES_RUNNING}" ]]; then
   echo "ERROR: ${TARGET_ENV^^} environment is not running. Cannot rollback."

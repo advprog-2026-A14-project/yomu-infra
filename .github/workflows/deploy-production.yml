@@ -186,7 +186,7 @@ jobs:
 
             while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
               ATTEMPT=$((ATTEMPT + 1))
-              UNHEALTHY=$(docker compose -f "${COMPOSE_FILE}" ps --format '{{.Name}} {{.Health}}' 2>/dev/null | grep -v -E '(healthy|starting)' || true)
+              UNHEALTHY=$(docker compose -f "docker-compose/docker-compose.shared.yml" -f "${COMPOSE_FILE}" ps --format '{{.Name}} {{.Health}}' 2>/dev/null | grep -v -E '(healthy|starting)' || true)
 
               if [[ -z "${UNHEALTHY}" ]]; then
                 ALL_HEALTHY=true
@@ -199,12 +199,12 @@ jobs:
 
             if [[ "${ALL_HEALTHY}" != "true" ]]; then
               echo "ERROR: Services did not become healthy within $((MAX_ATTEMPTS * 5)) seconds"
-              docker compose -f "${COMPOSE_FILE}" ps
+              docker compose -f "docker-compose/docker-compose.shared.yml" -f "${COMPOSE_FILE}" ps
               exit 1
             fi
 
             echo "All services are healthy."
-            docker compose -f "${COMPOSE_FILE}" ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
+            docker compose -f "docker-compose/docker-compose.shared.yml" -f "${COMPOSE_FILE}" ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
         env:
           TARGET_ENV: ${{ needs.detect-target.outputs.target_env }}
 

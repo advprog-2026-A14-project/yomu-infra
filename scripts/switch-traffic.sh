@@ -26,7 +26,7 @@ echo "=== Switching traffic to ${TARGET^^} environment ==="
 COMPOSE_FILE="${REPO_ROOT}/docker-compose/docker-compose.${TARGET}.yml"
 
 echo "Verifying ${TARGET^^} services are healthy..."
-UNHEALTHY=$(docker compose -f "${COMPOSE_FILE}" ps --format '{{.Name}} {{.Health}}' 2>/dev/null | grep -v -E '(healthy|starting)' || true)
+  UNHEALTHY=$(docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" -f "${COMPOSE_FILE}" ps --format '{{.Name}} {{.Health}}' 2>/dev/null | grep -v -E '(healthy|starting)' || true)
 
 if [[ -n "${UNHEALTHY}" ]]; then
   echo "ERROR: Not all ${TARGET^^} services are healthy:"

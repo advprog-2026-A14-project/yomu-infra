@@ -40,7 +40,7 @@ if [[ ! -f "${INACTIVE_COMPOSE}" ]]; then
   exit 1
 fi
 
-RUNNING=$(docker compose -f "${INACTIVE_COMPOSE}" ps -q 2>/dev/null || true)
+RUNNING=$(docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" -f "${INACTIVE_COMPOSE}" ps -q 2>/dev/null || true)
 
 if [[ -z "${RUNNING}" ]]; then
   echo "No running containers found for ${INACTIVE_ENV^^} environment. Nothing to clean up."
@@ -49,7 +49,7 @@ fi
 
 echo ""
 echo "Stopping ${INACTIVE_ENV^^} environment containers..."
-docker compose -f "${INACTIVE_COMPOSE}" down --remove-orphans
+docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" -f "${INACTIVE_COMPOSE}" down --remove-orphans
 
 echo ""
 echo "=== Cleanup complete ==="

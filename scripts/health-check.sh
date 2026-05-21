@@ -60,7 +60,7 @@ if [[ "${ACTIVE_ENV}" != "unknown" ]]; then
   COMPOSE_FILE="${REPO_ROOT}/docker-compose/docker-compose.${ACTIVE_ENV}.yml"
 
   if [[ -f "${COMPOSE_FILE}" ]]; then
-    SERVICES=$(docker compose -f "${COMPOSE_FILE}" ps --format '{{.Name}} {{.Health}}' 2>/dev/null || echo "")
+    SERVICES=$(docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" -f "${COMPOSE_FILE}" ps --format '{{.Name}} {{.Health}}' 2>/dev/null || echo "")
 
     if [[ -n "${SERVICES}" ]]; then
       while IFS= read -r line; do
