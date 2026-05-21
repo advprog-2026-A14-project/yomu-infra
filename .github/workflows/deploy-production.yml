@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - main
+  schedule:
+    - cron: '*/15 * * * *'
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Docker image tag to deploy"
+        description: "Docker image tag to deploy (default: poll for latest)"
         required: false
-        default: "latest"
+        default: ""
         type: string
       target_env:
         description: "Target environment (blue/green). Leave blank to auto-detect."
