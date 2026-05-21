@@ -5,12 +5,14 @@ http:
       service: grafana-svc
       entryPoints:
         - websecure
+      tls: {}
 
     prometheus-router:
       rule: "Host(`monitoring.yomu.my.id`) && PathPrefix(`/prometheus`)"
       service: prometheus-svc
       entryPoints:
         - websecure
+      tls: {}
 
     http-catchall:
       rule: "HostRegexp(`{host:.+}`)"
