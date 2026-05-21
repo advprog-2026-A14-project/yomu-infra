@@ -49,16 +49,16 @@
             {
               "type": "value",
               "options": {
-                "0": { "text": "Green", "color": "green" },
-                "1": { "text": "Blue", "color": "blue" }
+                "0": { "text": "Down", "color": "red" },
+                "1": { "text": "Up", "color": "green" }
               }
             }
           ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "value": null, "color": "green" },
-              { "value": 1, "color": "blue" }
+              { "value": null, "color": "red" },
+              { "value": 1, "color": "green" }
             ]
           }
         }
@@ -74,7 +74,7 @@
     },
     {
       "id": 3,
-      "title": "Blue Request Rate",
+      "title": "Production Request Rate",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 4, "w": 6, "x": 6, "y": 1 },
@@ -84,7 +84,7 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "value": null, "color": "blue" }
+              { "value": null, "color": "green" }
             ]
           }
         }
@@ -98,15 +98,15 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(traefik_service_requests_total{service=~\".*blue.*\"}[5m]))",
-          "legendFormat": "blue req/s",
+          "expr": "sum(rate(traefik_service_requests_total{service=~\"(java|rust|frontend)(-staging)?\"}[5m])) - sum(rate(traefik_service_requests_total{service=~\"(java|rust|frontend)-staging\"}[5m]))",
+          "legendFormat": "production req/s",
           "refId": "A"
         }
       ]
     },
     {
       "id": 4,
-      "title": "Green Request Rate",
+      "title": "Staging Request Rate",
       "type": "stat",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 4, "w": 6, "x": 12, "y": 1 },
@@ -130,8 +130,8 @@
       },
       "targets": [
         {
-          "expr": "sum(rate(traefik_service_requests_total{service=~\".*green.*\"}[5m]))",
-          "legendFormat": "green req/s",
+          "expr": "sum(rate(traefik_service_requests_total{service=~\"(java|rust|frontend)-staging\"}[5m]))",
+          "legendFormat": "staging req/s",
           "refId": "A"
         }
       ]
@@ -254,7 +254,7 @@
     },
     {
       "id": 14,
-      "title": "Blue Request Rate",
+      "title": "Production Service Request Rate",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
@@ -277,12 +277,12 @@
         "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"] }
       },
       "targets": [
-        { "expr": "rate(traefik_service_requests_total{service=~\".*blue.*\"}[5m])", "legendFormat": "{{service }}", "refId": "A" }
+        { "expr": "rate(traefik_service_requests_total{service=~\"(java|rust|frontend)(-staging)?\"}[5m]) - rate(traefik_service_requests_total{service=~\"(java|rust|frontend)-staging\"}[5m])", "legendFormat": "{{service}}", "refId": "A" }
       ]
     },
     {
       "id": 15,
-      "title": "Blue Error Rate",
+      "title": "Production Error Rate",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 9 },
@@ -311,12 +311,12 @@
         "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"] }
       },
       "targets": [
-        { "expr": "rate(traefik_service_requests_total{service=~\".*blue.*\", code=~\"5..\"}[5m])", "legendFormat": "{{ service }} {{ code }}", "refId": "A" }
+        { "expr": "rate(traefik_service_requests_total{service=~\"(java|rust|frontend)(-staging)?\", code=~\"5..\"}[5m]) - rate(traefik_service_requests_total{service=~\"(java|rust|frontend)-staging\", code=~\"5..\"}[5m])", "legendFormat": "{{ service }} {{ code }}", "refId": "A" }
       ]
     },
     {
       "id": 16,
-      "title": "Blue p95 Response Time",
+      "title": "Production p95 Response Time",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
@@ -345,7 +345,7 @@
         "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
       },
       "targets": [
-        { "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\".*blue.*\"}[5m])) by (le, service))", "legendFormat": "{{ service }}", "refId": "A" }
+        { "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\"(java|rust|frontend)(-staging)?\"}[5m])) by (le, service)) - histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\"(java|rust|frontend)-staging\"}[5m])) by (le, service))", "legendFormat": "{{ service }}", "refId": "A" }
       ]
     },
     {
@@ -461,7 +461,7 @@
     },
     {
       "id": 24,
-      "title": "Green Request Rate",
+      "title": "Staging Service Request Rate",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 29 },
@@ -483,12 +483,12 @@
         "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"] }
       },
       "targets": [
-        { "expr": "rate(traefik_service_requests_total{service=~\".*green.*\"}[5m])", "legendFormat": "{{ service }}", "refId": "A" }
+        { "expr": "rate(traefik_service_requests_total{service=~\"(java|rust|frontend)-staging\"}[5m])", "legendFormat": "{{ service }}", "refId": "A" }
       ]
     },
     {
       "id": 25,
-      "title": "Green Error Rate",
+      "title": "Staging Error Rate",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 29 },
@@ -517,12 +517,12 @@
         "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "lastNotNull"] }
       },
       "targets": [
-        { "expr": "rate(traefik_service_requests_total{service=~\".*green.*\", code=~\"5..\"}[5m])", "legendFormat": "{{ service }} {{ code }}", "refId": "A" }
+        { "expr": "rate(traefik_service_requests_total{service=~\"(java|rust|frontend)-staging\", code=~\"5..\"}[5m])", "legendFormat": "{{ service }} {{ code }}", "refId": "A" }
       ]
     },
     {
       "id": 26,
-      "title": "Green p95 Response Time",
+      "title": "Staging p95 Response Time",
       "type": "timeseries",
       "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 37 },
@@ -551,7 +551,7 @@
         "legend": { "displayMode": "table", "placement": "bottom", "calcs": ["mean", "max"] }
       },
       "targets": [
-        { "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\".*green.*\"}[5m])) by (le, service))", "legendFormat": "{{ service }}", "refId": "A" }
+        { "expr": "histogram_quantile(0.95, sum(rate(traefik_service_request_duration_seconds_bucket{service=~\"(java|rust|frontend)-staging\"}[5m])) by (le, service))", "legendFormat": "{{ service }}", "refId": "A" }
       ]
     },
     {
@@ -728,7 +728,7 @@
       {
         "name": "environment",
         "type": "custom",
-        "query": "blue,green",
+        "query": "production,staging",
         "current": {
           "selected": true,
           "text": "All",
@@ -736,12 +736,12 @@
         },
         "options": [
           { "selected": true, "text": "All", "value": "$__all" },
-          { "selected": false, "text": "blue", "value": "blue" },
-          { "selected": false, "text": "green", "value": "green" }
+          { "selected": false, "text": "production", "value": "production" },
+          { "selected": false, "text": "staging", "value": "staging" }
         ],
         "includeAll": true,
         "multi": true,
-        "description": "Select environment slot (/)"
+        "description": "Select deployment environment (production/staging)"
       },
       {
         "name": "service",

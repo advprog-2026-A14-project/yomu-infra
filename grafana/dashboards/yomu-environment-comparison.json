@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Compare production (/) vs staging environments across all Yomu services",
+  "description": "Compare production (java,rust,frontend) vs staging (java-staging,rust-staging,frontend-staging) environments across all Yomu services",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -81,12 +81,12 @@
       "gridPos": { "h": 6, "w": 8, "x": 8, "y": 1 },
       "targets": [
         {
-          "expr": "count(up{job=~\"java|java|rust|rust|frontend|frontend\"} == 1)",
+          "expr": "count(up{job=~\"java|rust|frontend\"} == 1)",
           "legendFormat": "Production Up",
           "refId": "A"
         },
         {
-          "expr": "count(up{job=~\"java|java|rust|rust|frontend|frontend\"})",
+          "expr": "count(up{job=~\"java|rust|frontend\"})",
           "legendFormat": "Production Total",
           "refId": "B"
         }
@@ -97,7 +97,7 @@
             "mode": "absolute",
             "steps": [
               { "value": null, "color": "red" },
-              { "value": 6, "color": "green" }
+              { "value": 3, "color": "green" }
             ]
           },
           "color": { "mode": "thresholds" }
@@ -167,7 +167,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=~\"java|java\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=~\"java\"}[5m])) by (le))",
           "legendFormat": "Production",
           "refId": "A"
         },
@@ -211,7 +211,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "targets": [
         {
-          "expr": "sum(jvm_memory_used_bytes{job=~\"java|java\", area=\"heap\"}) / sum(jvm_memory_max_bytes{job=~\"java|java\", area=\"heap\"})",
+          "expr": "sum(jvm_memory_used_bytes{job=~\"java\", area=\"heap\"}) / sum(jvm_memory_max_bytes{job=~\"java\", area=\"heap\"})",
           "legendFormat": "Production Heap",
           "refId": "A"
         },
@@ -273,7 +273,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=~\"rust|rust\"}[5m]))",
+          "expr": "sum(rate(http_requests_total{job=~\"rust\"}[5m]))",
           "legendFormat": "Production",
           "refId": "A"
         },
@@ -317,7 +317,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=~\"rust|rust\",status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=~\"rust|rust\"}[5m]))",
+          "expr": "sum(rate(http_requests_total{job=~\"rust\",status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=~\"rust\"}[5m]))",
           "legendFormat": "Production",
           "refId": "A"
         },
@@ -378,7 +378,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=~\"frontend|frontend\"}[5m]))",
+          "expr": "sum(rate(http_requests_total{job=~\"frontend\"}[5m]))",
           "legendFormat": "Production",
           "refId": "A"
         },
