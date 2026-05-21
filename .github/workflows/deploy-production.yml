@@ -8,7 +8,7 @@ on:
     inputs:
       image_tag:
         description: "Docker image tag to deploy"
-        required: true
+        required: false
         default: "latest"
         type: string
       target_env:
@@ -105,6 +105,9 @@ jobs:
             set -euo pipefail
             cd "${{ env.DEPLOY_DIR }}"
 
+            # Ensure IMAGE_TAG has a default
+            IMAGE_TAG="${IMAGE_TAG:-latest}"
+
             # Write secrets to .env if it doesn't exist
             if [[ ! -f .env ]]; then
               {
@@ -130,7 +133,7 @@ jobs:
             bash scripts/deploy-${TARGET_ENV}.sh --image-tag "${IMAGE_TAG}"
             echo "Deployment script completed."
         env:
-          IMAGE_TAG: ${{ inputs.image_tag }}
+          IMAGE_TAG: ${{ inputs.image_tag || 'latest' }}
           TARGET_ENV: ${{ needs.detect-target.outputs.target_env }}
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
