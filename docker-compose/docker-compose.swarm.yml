@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   traefik:
-    image: traefik:v3.3
+    image: traefik:v3.6
     ports:
       - "80:80"
       - "443:443"
@@ -13,8 +13,6 @@ services:
       - /opt/yomu/traefik/acme.json:/etc/traefik/acme.json
     networks:
       - yomu-overlay-net
-    environment:
-      DOCKER_API_VERSION: "1.41"
     deploy:
       replicas: 1
       update_config:
