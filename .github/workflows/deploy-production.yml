@@ -1,0 +1,273 @@
+name: Deploy to Production (Blue-Green)
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Docker image tag to deploy"
+        required: true
+        default: "latest"
+        type: string
+      target_env:
+        description: "Target environment (blue/green). Leave blank to auto-detect."
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  GCP_HOST: 34.101.41.6
+  GCP_USER: pongo
+  DEPLOY_DIR: /home/pongo/yomu-deployment
+
+jobs:
+  detect-target:
+    name: Detect Target Environment
+    runs-on: ubuntu-latest
+    outputs:
+      target_env: ${{ steps.detect.outputs.target_env }}
+      current_env: ${{ steps.detect.outputs.current_env }}
+    steps:
+      - name: Determine active environment via SSH
+        id: detect
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.GCP_HOST }}
+          username: ${{ env.GCP_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          script_stop: true
+          script: |
+            ROUTING_FILE="${{ env.DEPLOY_DIR }}/traefik/dynamic/routing.yml"
+            CURRENT="unknown"
+            if [[ -f "${ROUTING_FILE}" ]]; then
+              if grep -q 'frontend-blue' "${ROUTING_FILE}"; then
+                CURRENT="blue"
+              elif grep -q 'frontend-green' "${ROUTING_FILE}"; then
+                CURRENT="green"
+              fi
+            fi
+            echo "current_env=${CURRENT}" >> "$GITHUB_OUTPUT"
+
+            TARGET="${{ inputs.target_env }}"
+            if [[ -n "${TARGET}" ]]; then
+              echo "target_env=${TARGET}" >> "$GITHUB_OUTPUT"
+              echo "Manual target selected: ${TARGET}"
+              echo "Current active: ${CURRENT}"
+              exit 0
+            fi
+
+            if [[ "${CURRENT}" == "blue" ]]; then
+              TARGET="green"
+            elif [[ "${CURRENT}" == "green" ]]; then
+              TARGET="blue"
+            else
+              echo "Cannot determine active environment. Defaulting to blue."
+              TARGET="blue"
+            fi
+            echo "target_env=${TARGET}" >> "$GITHUB_OUTPUT"
+            echo "Current active: ${CURRENT}"
+            echo "Will deploy to: ${TARGET}"
+
+  deploy-to-target:
+    name: Deploy to ${{ needs.detect-target.outputs.target_env }}
+    runs-on: ubuntu-latest
+    needs: detect-target
+    environment:
+      name: production
+      url: https://yomu.my.id
+    steps:
+      - name: Deploy to inactive environment
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.GCP_HOST }}
+          username: ${{ env.GCP_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          envs: IMAGE_TAG
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "${{ env.DEPLOY_DIR }}"
+
+            # Write secrets to .env if they don't exist
+            if [[ ! -f .env ]]; then
+              echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > .env
+              echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+              echo "INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}" >> .env
+              echo "JAVA_CORE_API_KEY=${{ secrets.JAVA_CORE_API_KEY }}" >> .env
+              echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" >> .env
+            else
+              # Update secrets in existing .env safely
+              sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}/' .env || echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+              sed -i 's/^JWT_SECRET=.*/JWT_SECRET=${{ secrets.JWT_SECRET }}/' .env || echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+              sed -i 's/^INTERNAL_API_KEY=.*/INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}/' .env || echo "INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}" >> .env
+              sed -i 's/^JAVA_CORE_API_KEY=.*/JAVA_CORE_API_KEY=${{ secrets.JAVA_CORE_API_KEY }}/' .env || echo "JAVA_CORE_API_KEY=${{ secrets.JAVA_CORE_API_KEY }}" >> .env
+              sed -i 's/^GRAFANA_ADMIN_PASSWORD=.*/GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}/' .env || echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" >> .env
+            fi
+
+            export IMAGE_TAG="${{ inputs.image_tag }}"
+
+            echo "=== Deploying ${{ needs.detect-target.outputs.target_env }} environment (tag: ${IMAGE_TAG}) ==="
+            bash scripts/deploy-${{ needs.detect-target.outputs.target_env }}.sh --image-tag "${IMAGE_TAG}"
+
+            echo "Deployment script completed."
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+
+  health-check:
+    name: Health Check
+    runs-on: ubuntu-latest
+    needs: [detect-target, deploy-to-target]
+    steps:
+      - name: Wait for services to stabilize
+        run: sleep 10
+
+      - name: Check all target services are healthy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.GCP_HOST }}
+          username: ${{ env.GCP_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "${{ env.DEPLOY_DIR }}"
+            COMPOSE_FILE="docker-compose/docker-compose.${{ needs.detect-target.outputs.target_env }}.yml"
+
+            MAX_ATTEMPTS=30
+            ATTEMPT=0
+            ALL_HEALTHY=false
+
+            while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
+              ATTEMPT=$((ATTEMPT + 1))
+              UNHEALTHY=$(docker compose -f "${COMPOSE_FILE}" ps --format '{{.Name}} {{.Health}}' 2>/dev/null | grep -v -E '(healthy|starting)' || true)
+
+              if [[ -z "${UNHEALTHY}" ]]; then
+                ALL_HEALTHY=true
+                break
+              fi
+
+              echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: services still starting..."
+              sleep 5
+            done
+
+            if [[ "${ALL_HEALTHY}" != "true" ]]; then
+              echo "ERROR: Services did not become healthy within $((MAX_ATTEMPTS * 5)) seconds"
+              docker compose -f "${COMPOSE_FILE}" ps
+              exit 1
+            fi
+
+            echo "All services are healthy."
+            docker compose -f "${COMPOSE_FILE}" ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
+
+      - name: Smoke test endpoints via localhost
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.GCP_HOST }}
+          username: ${{ env.GCP_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+
+            PASS=0
+            FAIL=0
+
+            if curl -sf --max-time 10 http://localhost:80/api/java/actuator/health/readiness > /dev/null 2>&1; then
+              echo "  [PASS] Java API readiness"
+              PASS=$((PASS + 1))
+            else
+              echo "  [FAIL] Java API readiness"
+              FAIL=$((FAIL + 1))
+            fi
+
+            if curl -sf --max-time 10 http://localhost:80/api/rust/health > /dev/null 2>&1; then
+              echo "  [PASS] Rust API health"
+              PASS=$((PASS + 1))
+            else
+              echo "  [FAIL] Rust API health"
+              FAIL=$((FAIL + 1))
+            fi
+
+            if curl -sf --max-time 10 http://localhost:80 > /dev/null 2>&1; then
+              echo "  [PASS] Frontend root"
+              PASS=$((PASS + 1))
+            else
+              echo "  [FAIL] Frontend root"
+              FAIL=$((FAIL + 1))
+            fi
+
+            echo ""
+            echo "Smoke tests: ${PASS} passed, ${FAIL} failed"
+
+            if [[ ${FAIL} -gt 0 ]]; then
+              exit 1
+            fi
+
+  switch-traffic:
+    name: Switch Traffic
+    runs-on: ubuntu-latest
+    needs: [detect-target, health-check]
+    steps:
+      - name: Run switch-traffic.sh
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.GCP_HOST }}
+          username: ${{ env.GCP_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "${{ env.DEPLOY_DIR }}"
+            bash scripts/switch-traffic.sh ${{ needs.detect-target.outputs.target_env }}
+
+  schedule-cleanup:
+    name: Schedule Old Environment Cleanup
+    runs-on: ubuntu-latest
+    needs: [detect-target, switch-traffic]
+    steps:
+      - name: Schedule old environment auto-stop after 30 minutes
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.GCP_HOST }}
+          username: ${{ env.GCP_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "${{ env.DEPLOY_DIR }}"
+
+            CURRENT="${{ needs.detect-target.outputs.current_env }}"
+            NEW="${{ needs.detect-target.outputs.target_env }}"
+
+            if [[ "${CURRENT}" == "unknown" || "${CURRENT}" == "${NEW}" ]]; then
+              echo "No previous environment to stop."
+              exit 0
+            fi
+
+            OLD="${CURRENT}"
+            echo "Scheduling ${OLD} environment stop in 30 minutes..."
+
+            # Create a one-shot at job to stop old environment after 30 minutes
+            echo "cd ${{ env.DEPLOY_DIR }} && docker compose -f docker-compose/docker-compose.${OLD}.yml down || true" > /tmp/stop-${OLD}-job.sh
+            chmod +x /tmp/stop-${OLD}-job.sh
+
+            # Schedule with at in 30 minutes
+            if command -v at >/dev/null 2>&1; then
+              echo "bash /tmp/stop-${OLD}-job.sh" | at now + 30 minutes
+              echo "Scheduled auto-stop of ${OLD} environment via at."
+            else
+              # Fallback: background nohup sleep
+              nohup bash -c "sleep 1800 && cd ${{ env.DEPLOY_DIR }} && docker compose -f docker-compose/docker-compose.${OLD}.yml down || true" > /tmp/stop-${OLD}.log 2>&1 &
+              echo "Scheduled auto-stop of ${OLD} environment via background sleep (1800s)."
+            fi
+
+            echo ""
+            echo "=== Deployment Summary ==="
+            echo "Previous environment : ${OLD}"
+            echo "Current environment  : ${NEW}"
+            echo "Auto-stop scheduled  : ${OLD} in 30 minutes"
+            echo "To cancel auto-stop, SSH to the host and run:"
+            echo "  atrm <jobnumber>   (if using at)"
+            echo "  pkill -f 'stop-${OLD}-job'"

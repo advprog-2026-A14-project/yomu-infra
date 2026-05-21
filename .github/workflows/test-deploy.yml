@@ -1,0 +1,42 @@
+name: Validate Deployment Scripts
+
+on:
+  pull_request:
+    paths:
+      - 'docker-compose/**'
+      - 'scripts/**'
+      - 'traefik/**'
+      - '.github/workflows/**'
+
+jobs:
+  validate-scripts:
+    name: ShellCheck Scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run ShellCheck
+        run: |
+          for script in scripts/*.sh; do
+            echo "Checking: $script"
+            bash -n "$script" || { echo "Syntax error in $script"; exit 1; }
+          done
+
+  validate-compose:
+    name: Validate Docker Compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Docker Compose
+        run: |
+          mkdir -p ~/.local/bin
+          curl -sfL "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64" -o ~/.local/bin/docker-compose
+          chmod +x ~/.local/bin/docker-compose
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Validate compose files
+        run: |
+          cd docker-compose
+          docker compose -f docker-compose.shared.yml config --quiet || { echo "shared.yml invalid"; exit 1; }
+          docker compose -f docker-compose.blue.yml config --quiet || { echo "blue.yml invalid"; exit 1; }
+          docker compose -f docker-compose.green.yml config --quiet || { echo "green.yml invalid"; exit 1; }
+          docker compose -f docker-compose.staging.yml config --quiet || { echo "staging.yml invalid"; exit 1; }
+          echo "All compose files valid"

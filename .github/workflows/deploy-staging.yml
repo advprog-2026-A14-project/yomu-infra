@@ -1,0 +1,111 @@
+name: Deploy to Staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Staging Docker image tag"
+        required: true
+        default: "staging"
+        type: string
+  push:
+    branches:
+      - staging
+    paths:
+      - "yomu-deployment/**"
+      - "yomu-deployment/scripts/deploy-staging.sh"
+      - "yomu-deployment/docker-compose/docker-compose.staging.yml"
+
+permissions:
+  contents: read
+
+env:
+  GCP_HOST: 34.101.41.6
+  GCP_USER: pongo
+  DEPLOY_DIR: /home/pongo/yomu-deployment
+
+jobs:
+  deploy-staging:
+    name: Deploy Staging Environment
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.yomu.my.id
+    steps:
+      - name: Pull latest staging images and restart containers
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.GCP_HOST }}
+          username: ${{ env.GCP_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          envs: IMAGE_TAG
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "${{ env.DEPLOY_DIR }}"
+
+            # Write secrets to .env if they don't exist
+            if [[ ! -f .env ]]; then
+              echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > .env
+              echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+              echo "INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}" >> .env
+              echo "JAVA_CORE_API_KEY=${{ secrets.JAVA_CORE_API_KEY }}" >> .env
+              echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" >> .env
+            else
+              # Update secrets in existing .env safely
+              sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}/' .env || echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+              sed -i 's/^JWT_SECRET=.*/JWT_SECRET=${{ secrets.JWT_SECRET }}/' .env || echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+              sed -i 's/^INTERNAL_API_KEY=.*/INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}/' .env || echo "INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}" >> .env
+              sed -i 's/^JAVA_CORE_API_KEY=.*/JAVA_CORE_API_KEY=${{ secrets.JAVA_CORE_API_KEY }}/' .env || echo "JAVA_CORE_API_KEY=${{ secrets.JAVA_CORE_API_KEY }}" >> .env
+              sed -i 's/^GRAFANA_ADMIN_PASSWORD=.*/GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}/' .env || echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" >> .env
+            fi
+
+            export STAGING_IMAGE_TAG="${IMAGE_TAG}"
+            echo "Deploying staging with image tag: ${STAGING_IMAGE_TAG}"
+
+            bash scripts/deploy-staging.sh --image-tag "${STAGING_IMAGE_TAG}"
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag || 'staging' }}
+
+      - name: Verify staging health
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ env.GCP_HOST }}
+          username: ${{ env.GCP_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "${{ env.DEPLOY_DIR }}"
+
+            COMPOSE_FILE="docker-compose/docker-compose.shared.yml"
+            STAGING_FILE="docker-compose/docker-compose.staging.yml"
+
+            MAX_ATTEMPTS=30
+            ATTEMPT=0
+            ALL_HEALTHY=false
+
+            while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
+              ATTEMPT=$((ATTEMPT + 1))
+              UNHEALTHY=$(docker compose \
+                -f "${COMPOSE_FILE}" \
+                -f "${STAGING_FILE}" \
+                ps --format '{{.Name}} {{.Health}}' 2>/dev/null | grep -v -E '(healthy|starting)' || true)
+
+              if [[ -z "${UNHEALTHY}" ]]; then
+                ALL_HEALTHY=true
+                break
+              fi
+
+              echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: some services still starting..."
+              sleep 5
+            done
+
+            if [[ "${ALL_HEALTHY}" != "true" ]]; then
+              echo "ERROR: Staging services did not become healthy within $((MAX_ATTEMPTS * 5)) seconds"
+              docker compose -f "${COMPOSE_FILE}" -f "${STAGING_FILE}" ps
+              exit 1
+            fi
+
+            echo "=== Staging deployed successfully ==="
+            docker compose -f "${COMPOSE_FILE}" -f "${STAGING_FILE}" ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
