@@ -34,6 +34,8 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:5432:5432"
+    env_file:
+      - ../.env
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ../scripts/init-databases.sql:/docker-entrypoint-initdb.d/02-init-databases.sql:ro
@@ -163,7 +165,7 @@ services:
     networks:
       - yomu-shared-network
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3200/ready"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3200/ready"]
       interval: 15s
       timeout: 5s
       retries: 3
