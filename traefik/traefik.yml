@@ -3,7 +3,6 @@
 
 api:
   dashboard: true
-  insecure: true
 
 ping: {}
 
@@ -17,6 +16,12 @@ providers:
 entryPoints:
   web:
     address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
   websecure:
     address: ":443"
 
@@ -26,12 +31,12 @@ metrics:
 accessLog: {}
 
 log:
-  level: INFO
+  level: WARN
 
-# Uncomment for Let's Encrypt TLS certificates
-# certificatesResolvers:
-#   letsencrypt:
-#     acme:
-#       tlsChallenge: {}
-#       email: admin@yomu.my.id
-#       storage: /etc/traefik/acme.json
+# Let's Encrypt TLS certificates via ACME
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      tlsChallenge: {}
+      email: admin@yomu.my.id
+      storage: /etc/traefik/acme.json
