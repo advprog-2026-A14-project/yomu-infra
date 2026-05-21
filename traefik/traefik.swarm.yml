@@ -19,7 +19,6 @@ providers:
   docker:
     exposedByDefault: false
     network: yomu-overlay-net
-    swarmMode: true
   file:
     directory: /etc/traefik/dynamic
     watch: true
