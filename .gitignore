@@ -22,3 +22,4 @@ monitoring/benchmarks/*
 
 # Script output
 scripts/*.log
+SECRETS.md
