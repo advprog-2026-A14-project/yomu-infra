@@ -25,7 +25,7 @@ services:
         delay: 5s
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.traefik.rule=Host(\`monitoring.yomu.my.id\`)"
+        - "traefik.http.routers.traefik.rule=Host(`monitoring.yomu.my.id`)"
         - "traefik.http.routers.traefik.service=api@internal"
         - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
 
@@ -119,7 +119,7 @@ services:
           memory: 1G
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.java.rule=Host(\`java.yomu.my.id\`)"
+        - "traefik.http.routers.java.rule=Host(`java.yomu.my.id`)"
         - "traefik.http.routers.java.service=java"
         - "traefik.http.routers.java.tls.certresolver=letsencrypt"
         - "traefik.http.services.java.loadbalancer.server.port=8080"
@@ -163,7 +163,7 @@ services:
           memory: 512M
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.rust.rule=Host(\`rust.yomu.my.id\`)"
+        - "traefik.http.routers.rust.rule=Host(`rust.yomu.my.id`)"
         - "traefik.http.routers.rust.service=rust"
         - "traefik.http.routers.rust.tls.certresolver=letsencrypt"
         - "traefik.http.services.rust.loadbalancer.server.port=8080"
@@ -202,7 +202,7 @@ services:
           memory: 512M
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.frontend.rule=Host(\`yomu.my.id\`)"
+        - "traefik.http.routers.frontend.rule=Host(`yomu.my.id`)"
         - "traefik.http.routers.frontend.service=frontend"
         - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
         - "traefik.http.services.frontend.loadbalancer.server.port=3000"
@@ -288,7 +288,7 @@ services:
           memory: 1G
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.java-staging.rule=Host(\`java-staging.yomu.my.id\`)"
+        - "traefik.http.routers.java-staging.rule=Host(`java-staging.yomu.my.id`)"
         - "traefik.http.routers.java-staging.service=java-staging"
         - "traefik.http.routers.java-staging.tls.certresolver=letsencrypt"
         - "traefik.http.services.java-staging.loadbalancer.server.port=8080"
@@ -328,7 +328,7 @@ services:
           memory: 512M
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.rust-staging.rule=Host(\`rust-staging.yomu.my.id\`)"
+        - "traefik.http.routers.rust-staging.rule=Host(`rust-staging.yomu.my.id`)"
         - "traefik.http.routers.rust-staging.service=rust-staging"
         - "traefik.http.routers.rust-staging.tls.certresolver=letsencrypt"
         - "traefik.http.services.rust-staging.loadbalancer.server.port=8080"
@@ -363,7 +363,7 @@ services:
           memory: 512M
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.frontend-staging.rule=Host(\`staging.yomu.my.id\`)"
+        - "traefik.http.routers.frontend-staging.rule=Host(`staging.yomu.my.id`)"
         - "traefik.http.routers.frontend-staging.service=frontend-staging"
         - "traefik.http.routers.frontend-staging.tls.certresolver=letsencrypt"
         - "traefik.http.services.frontend-staging.loadbalancer.server.port=3000"
@@ -490,7 +490,7 @@ services:
           memory: 256M
       labels:
         - "traefik.enable=true"
-        - "traefik.http.routers.grafana.rule=Host(\`monitoring.yomu.my.id\`)"
+        - "traefik.http.routers.grafana.rule=Host(`monitoring.yomu.my.id`)"
         - "traefik.http.routers.grafana.service=grafana"
         - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
         - "traefik.http.services.grafana.loadbalancer.server.port=3000"
