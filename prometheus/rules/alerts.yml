@@ -66,6 +66,19 @@ groups:
             PostgreSQL exporter cannot reach the database. The database may be
             unreachable or the exporter sidecar is misconfigured.
 
+      - alert: PostDeployHighErrorRate
+        expr: |
+          sum(rate(traefik_service_requests_total{code=~"5.."}[2m]))
+          / sum(rate(traefik_service_requests_total[2m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          environment: production
+          service: platform
+        annotations:
+          summary: "Error rate > 5% after deployment — consider rollback"
+          description: "Current error rate is {{ $value | humanizePercentage }}. Run ./scripts/rollback.sh"
+
       - alert: BlueGreenOutOfSync
         expr: >-
           (count(up{job=~"java-blue|rust-blue|frontend-blue"} == 1) == 0)
