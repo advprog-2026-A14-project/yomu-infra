@@ -29,7 +29,12 @@ fi
 
 echo "=== Deploying STAGING environment (image-tag: ${IMAGE_TAG}) ==="
 
-docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.staging.yml" pull frontend-staging java-staging rust-staging
+# Pull latest images using both compose files so dependencies resolve
+# (e.g., rust-staging depends_on postgres which is defined in shared.yml)
+docker compose \
+  -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \
+  -f "${REPO_ROOT}/docker-compose/docker-compose.staging.yml" \
+  pull frontend-staging java-staging rust-staging
 
 docker compose \
   -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \

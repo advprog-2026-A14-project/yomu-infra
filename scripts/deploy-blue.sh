@@ -29,8 +29,14 @@ fi
 
 echo "=== Deploying BLUE environment (image-tag: ${IMAGE_TAG}) ==="
 
-docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" pull frontend-blue java-blue rust-blue
+# Pull latest images using both compose files so dependencies resolve
+docker compose \
+  -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \
+  -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" \
+  pull frontend-blue java-blue rust-blue
 
+# Recreate ONLY blue app containers. --no-deps prevents Docker Compose
+# from restarting shared services (postgres, redis, traefik).
 docker compose \
   -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \
   -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" \

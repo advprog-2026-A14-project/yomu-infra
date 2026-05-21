@@ -29,7 +29,12 @@ fi
 
 echo "=== Deploying GREEN environment (image-tag: ${IMAGE_TAG}) ==="
 
-docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.green.yml" pull frontend-green java-green rust-green
+# Pull latest images using both compose files so dependencies resolve
+# (e.g., rust-green depends_on postgres which is defined in shared.yml)
+docker compose \
+  -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \
+  -f "${REPO_ROOT}/docker-compose/docker-compose.green.yml" \
+  pull frontend-green java-green rust-green
 
 docker compose \
   -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \
