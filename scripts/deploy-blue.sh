@@ -29,7 +29,7 @@ fi
 
 echo "=== Deploying BLUE environment (image-tag: ${IMAGE_TAG}) ==="
 
-docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" up -d
+docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" up -d
 
 echo "Waiting for BLUE services to become healthy..."
 MAX_ATTEMPTS=60
@@ -38,7 +38,7 @@ ALL_HEALTHY=false
 
 while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
   ATTEMPT=$((ATTEMPT + 1))
-  UNHEALTHY=$(docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" ps --format '{{.Name}} {{.Health}}' 2>/dev/null | grep -v -E '(healthy|starting)' || true)
+  UNHEALTHY=$(docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" ps --format '{{.Name}} {{.Health}}' 2>/dev/null | grep -v -E '(healthy|starting)' || true)
 
   if [[ -z "${UNHEALTHY}" ]]; then
     ALL_HEALTHY=true
@@ -51,12 +51,12 @@ done
 
 if [[ "${ALL_HEALTHY}" != "true" ]]; then
   echo "ERROR: BLUE services did not become healthy within $((MAX_ATTEMPTS * 5)) seconds"
-  docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" ps
+  docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" ps
   exit 1
 fi
 
 echo ""
 echo "=== BLUE environment deployed successfully ==="
-docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
+docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" -f "${REPO_ROOT}/docker-compose/docker-compose.blue.yml" ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
 echo ""
 echo "NOTE: Traffic has NOT been switched. Run scripts/switch-traffic.sh to route traffic to BLUE."
