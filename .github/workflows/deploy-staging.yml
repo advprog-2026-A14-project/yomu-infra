@@ -38,26 +38,31 @@ jobs:
           host: ${{ env.GCP_HOST }}
           username: ${{ env.GCP_USER }}
           key: ${{ secrets.GCP_SSH_KEY }}
-          envs: IMAGE_TAG
+          envs: IMAGE_TAG,POSTGRES_PASSWORD,JWT_SECRET,INTERNAL_API_KEY,JAVA_CORE_API_KEY,GRAFANA_ADMIN_PASSWORD
           script_stop: true
           script: |
             set -euo pipefail
             cd "${{ env.DEPLOY_DIR }}"
 
-            # Write secrets to .env if they don't exist
+            # Write secrets to .env if it doesn't exist
             if [[ ! -f .env ]]; then
-              echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" > .env
-              echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-              echo "INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}" >> .env
-              echo "JAVA_CORE_API_KEY=${{ secrets.JAVA_CORE_API_KEY }}" >> .env
-              echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" >> .env
+              {
+                echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
+                echo "JWT_SECRET=${JWT_SECRET}"
+                echo "INTERNAL_API_KEY=${INTERNAL_API_KEY}"
+                echo "JAVA_CORE_API_KEY=${JAVA_CORE_API_KEY}"
+                echo "GRAFANA_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}"
+              } > .env
             else
-              # Update secrets in existing .env safely
-              sed -i 's/^POSTGRES_PASSWORD=.*/POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}/' .env || echo "POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
-              sed -i 's/^JWT_SECRET=.*/JWT_SECRET=${{ secrets.JWT_SECRET }}/' .env || echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
-              sed -i 's/^INTERNAL_API_KEY=.*/INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}/' .env || echo "INTERNAL_API_KEY=${{ secrets.INTERNAL_API_KEY }}" >> .env
-              sed -i 's/^JAVA_CORE_API_KEY=.*/JAVA_CORE_API_KEY=${{ secrets.JAVA_CORE_API_KEY }}/' .env || echo "JAVA_CORE_API_KEY=${{ secrets.JAVA_CORE_API_KEY }}" >> .env
-              sed -i 's/^GRAFANA_ADMIN_PASSWORD=.*/GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}/' .env || echo "GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}" >> .env
+              # Update secrets safely using sed with fallback to append
+              for var in POSTGRES_PASSWORD JWT_SECRET INTERNAL_API_KEY JAVA_CORE_API_KEY GRAFANA_ADMIN_PASSWORD; do
+                val="${!var}"
+                if grep -q "^${var}=" .env 2>/dev/null; then
+                  sed -i "s/^${var}=.*/${var}=${val}/" .env
+                else
+                  echo "${var}=${val}" >> .env
+                fi
+              done
             fi
 
             export STAGING_IMAGE_TAG="${IMAGE_TAG}"
@@ -66,6 +71,11 @@ jobs:
             bash scripts/deploy-staging.sh --image-tag "${STAGING_IMAGE_TAG}"
         env:
           IMAGE_TAG: ${{ inputs.image_tag || 'staging' }}
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
+          JAVA_CORE_API_KEY: ${{ secrets.JAVA_CORE_API_KEY }}
+          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
 
       - name: Verify staging health
         uses: appleboy/ssh-action@v1

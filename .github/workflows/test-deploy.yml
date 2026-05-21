@@ -1,42 +1,119 @@
-name: Validate Deployment Scripts
+name: Test Deployment Scripts
 
 on:
   pull_request:
     paths:
-      - 'docker-compose/**'
-      - 'scripts/**'
-      - 'traefik/**'
-      - '.github/workflows/**'
+      - "yomu-deployment/scripts/**"
+      - "yomu-deployment/docker-compose/**"
+      - "yomu-deployment/traefik/**"
+      - ".github/workflows/deploy-production.yml"
+      - ".github/workflows/deploy-staging.yml"
+  push:
+    branches: [main]
+    paths:
+      - "yomu-deployment/scripts/**"
+      - "yomu-deployment/docker-compose/**"
+      - "yomu-deployment/traefik/**"
+      - ".github/workflows/deploy-production.yml"
+      - ".github/workflows/deploy-staging.yml"
+
+permissions:
+  contents: read
 
 jobs:
-  validate-scripts:
-    name: ShellCheck Scripts
+  shellcheck:
+    name: Shellcheck Scripts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Run ShellCheck
-        run: |
-          for script in scripts/*.sh; do
-            echo "Checking: $script"
-            bash -n "$script" || { echo "Syntax error in $script"; exit 1; }
-          done
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  validate-compose:
-    name: Validate Docker Compose
+      - name: Install shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+
+      - name: Run shellcheck on deployment scripts
+        run: |
+          cd yomu-deployment
+          shellcheck -x scripts/*.sh
+
+  docker-compose-config:
+    name: Validate Docker Compose Configs
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Install Docker Compose
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create dummy .env for validation
         run: |
-          mkdir -p ~/.local/bin
-          curl -sfL "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64" -o ~/.local/bin/docker-compose
-          chmod +x ~/.local/bin/docker-compose
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
-      - name: Validate compose files
+          cd yomu-deployment
+          cat > .env <<EOF
+          POSTGRES_PASSWORD=dummy-secret
+          JWT_SECRET=dummy-jwt-secret
+          INTERNAL_API_KEY=dummy-internal-key
+          JAVA_CORE_API_KEY=dummy-java-key
+          GRAFANA_ADMIN_PASSWORD=dummy-grafana-password
+          EOF
+
+      - name: Validate docker-compose.blue.yml
         run: |
-          cd docker-compose
-          docker compose -f docker-compose.shared.yml config --quiet || { echo "shared.yml invalid"; exit 1; }
-          docker compose -f docker-compose.blue.yml config --quiet || { echo "blue.yml invalid"; exit 1; }
-          docker compose -f docker-compose.green.yml config --quiet || { echo "green.yml invalid"; exit 1; }
-          docker compose -f docker-compose.staging.yml config --quiet || { echo "staging.yml invalid"; exit 1; }
-          echo "All compose files valid"
+          cd yomu-deployment
+          docker compose -f docker-compose/docker-compose.blue.yml config > /dev/null
+
+      - name: Validate docker-compose.green.yml
+        run: |
+          cd yomu-deployment
+          docker compose -f docker-compose/docker-compose.green.yml config > /dev/null
+
+      - name: Validate docker-compose.staging.yml
+        run: |
+          cd yomu-deployment
+          # Staging uses STAGING_IMAGE_TAG env var
+          export STAGING_IMAGE_TAG=staging
+          docker compose -f docker-compose/docker-compose.shared.yml -f docker-compose/docker-compose.staging.yml config > /dev/null
+
+      - name: Validate docker-compose.shared.yml
+        run: |
+          cd yomu-deployment
+          docker compose -f docker-compose/docker-compose.shared.yml config > /dev/null
+
+  validate-traefik-configs:
+    name: Validate Traefik YAML Configs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install yamllint
+        run: |
+          pip install yamllint
+
+      - name: Run yamllint on traefik configs
+        run: |
+          cd yomu-deployment/traefik
+          yamllint -d relaxed traefik.yml dynamic/
+
+      - name: Run yamllint on other YAML files
+        run: |
+          cd yomu-deployment
+          yamllint -d relaxed prometheus/ grafana/ loki/ tempo/ otel/ || true
+
+  workflow-syntax:
+    name: Validate Workflow YAML Syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install actionlint
+        run: |
+          bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          chmod +x actionlint
+
+      - name: Run actionlint on deployment workflows
+        run: |
+          ./actionlint -color .github/workflows/deploy-production.yml .github/workflows/deploy-staging.yml .github/workflows/test-deploy.yml
