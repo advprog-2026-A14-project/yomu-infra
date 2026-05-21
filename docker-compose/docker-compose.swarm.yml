@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   traefik:
-    image: traefik:v3.1
+    image: traefik:v3.3
     ports:
       - "80:80"
       - "443:443"
@@ -13,6 +13,8 @@ services:
       - /opt/yomu/traefik/acme.json:/etc/traefik/acme.json
     networks:
       - yomu-overlay-net
+    environment:
+      DOCKER_API_VERSION: "1.41"
     deploy:
       replicas: 1
       update_config:
@@ -38,7 +40,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yomu_password}
-      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_DB: yomu_db
     volumes:
       - postgres_data:/var/lib/postgresql
       - /opt/yomu/scripts/init-databases.sql:/docker-entrypoint-initdb.d/02-init-databases.sql:ro
@@ -85,6 +87,8 @@ services:
 
   java:
     image: ghcr.io/advprog-2026-a14-project/yomu-backend-java:main
+    env_file:
+      - /opt/yomu/.env
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/yomu_db
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
@@ -128,6 +132,8 @@ services:
 
   rust:
     image: ghcr.io/advprog-2026-a14-project/yomu-backend-rust:main
+    env_file:
+      - /opt/yomu/.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/yomu_engine
       REDIS_URL: redis://redis:6379
@@ -142,7 +148,7 @@ services:
     networks:
       - yomu-overlay-net
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -172,6 +178,8 @@ services:
 
   frontend:
     image: ghcr.io/advprog-2026-a14-project/yomu-frontend:main
+    env_file:
+      - /opt/yomu/.env
     environment:
       CORE_API_BASE_URL: http://java:8080
       RUST_ENGINE_URL: http://rust:8080
@@ -257,6 +265,8 @@ services:
 
   java-staging:
     image: ghcr.io/advprog-2026-a14-project/yomu-backend-java:staging
+    env_file:
+      - /opt/yomu/.env
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-staging:5432/yomu_db_staging
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
@@ -296,6 +306,8 @@ services:
 
   rust-staging:
     image: ghcr.io/advprog-2026-a14-project/yomu-backend-rust:staging
+    env_file:
+      - /opt/yomu/.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres-staging:5432/yomu_engine_staging
       REDIS_URL: redis://redis-staging:6379
@@ -310,7 +322,7 @@ services:
     networks:
       - yomu-overlay-net
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
       timeout: 5s
       retries: 3
@@ -336,6 +348,8 @@ services:
 
   frontend-staging:
     image: ghcr.io/advprog-2026-a14-project/yomu-frontend:staging
+    env_file:
+      - /opt/yomu/.env
     environment:
       CORE_API_BASE_URL: http://java-staging:8080
       RUST_ENGINE_URL: http://rust-staging:8080
