@@ -22,6 +22,22 @@ http:
       middlewares:
         - strip-rust-prefix
 
+    java-subdomain:
+      rule: "Host(`java.yomu.my.id`)"
+      service: java-blue
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+
+    rust-subdomain:
+      rule: "Host(`rust.yomu.my.id`)"
+      service: rust-blue
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: letsencrypt
+
     grafana-router:
       rule: "PathPrefix(`/grafana`)"
       service: grafana@docker
