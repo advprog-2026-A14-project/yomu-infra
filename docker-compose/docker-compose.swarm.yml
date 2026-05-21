@@ -11,6 +11,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /opt/yomu/traefik/traefik.swarm.yml:/etc/traefik/traefik.yml:ro
       - /opt/yomu/traefik/acme.json:/etc/traefik/acme.json
+      - /opt/yomu/traefik/dynamic:/etc/traefik/dynamic:ro
     networks:
       - yomu-overlay-net
     deploy:
@@ -18,17 +19,6 @@ services:
       update_config:
         parallelism: 1
         delay: 10s
-        failure_action: rollback
-        order: start-first
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-      labels:
-        - "traefik.enable=true"
-        - "traefik.http.routers.traefik.rule=Host(`monitoring.yomu.my.id`)"
-        - "traefik.http.routers.traefik.service=api@internal"
-        - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-
   postgres:
     image: postgres:18-alpine
     ports:
@@ -52,12 +42,6 @@ services:
       start_period: 30s
     deploy:
       replicas: 1
-      update_config:
-        parallelism: 1
-        delay: 10s
-      restart_policy:
-        condition: on-failure
-        delay: 5s
       resources:
         limits:
           cpus: '1.0'
@@ -135,12 +119,12 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/yomu_engine
       REDIS_URL: redis://redis:6379
+      REDIS_KEY_PREFIX: prod_
       APP_HOST: "0.0.0.0"
       APP_PORT: "8080"
       JAVA_CORE_URL: http://java:8080
       JAVA_CORE_API_KEY: ${JAVA_CORE_API_KEY:-dummy}
       JWT_SECRET: ${JWT_SECRET:-dummy}
-      GRPC_PORT: "50051"
       SERVER_PORT: "8080"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     networks:
@@ -164,7 +148,7 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 512M
+          memory: 1G
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.rust.rule=Host(`rust.yomu.my.id`)"
@@ -323,8 +307,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
       timeout: 5s
-      retries: 3
-      start_period: 30s
+      retries: 5
+      start_period: 120s
     deploy:
       replicas: 1
       update_config:
@@ -335,7 +319,7 @@ services:
       resources:
         limits:
           cpus: '0.5'
-          memory: 512M
+          memory: 1G
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.rust-staging.rule=Host(`rust-staging.yomu.my.id`)"
@@ -369,6 +353,9 @@ services:
         delay: 15s
         failure_action: rollback
         order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
       resources:
         limits:
           cpus: '0.5'
@@ -381,84 +368,127 @@ services:
         - "traefik.http.services.frontend-staging.loadbalancer.server.port=3000"
         - "traefik.http.services.frontend-staging.loadbalancer.healthcheck.path=/"
 
-  prometheus:
-    image: prom/prometheus:v2.53.0
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
     ports:
-      - "127.0.0.1:9090:9090"
+      - "127.0.0.1:8080:8080"
     volumes:
-      - /opt/yomu/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - /opt/yomu/prometheus/rules:/etc/prometheus/rules:ro
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    privileged: true
     networks:
       - yomu-overlay-net
     deploy:
       replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
       resources:
         limits:
           cpus: '0.5'
           memory: 512M
-
-  postgres-exporter:
-    image: prometheuscommunity/postgres-exporter:v0.15.0
-    ports:
-      - "127.0.0.1:9187:9187"
-    environment:
-      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-yomu_password}@postgres:5432/postgres?sslmode=disable
-    networks:
-      - yomu-overlay-net
-    deploy:
-      replicas: 1
-      resources:
-        limits:
-          cpus: '0.125'
-          memory: 128M
+      restart_policy:
+        condition: any
+        delay: 10s
 
   redis-exporter:
     image: oliver006/redis_exporter:v1.58.0-alpine
-    ports:
-      - "127.0.0.1:9121:9121"
     environment:
       REDIS_ADDR: redis://redis:6379
     networks:
       - yomu-overlay-net
     deploy:
       replicas: 1
-      resources:
-        limits:
-          cpus: '0.125'
-          memory: 128M
+      update_config:
+        parallelism: 1
+        delay: 10s
+    ports:
+      - "127.0.0.1:9121:9121"
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    environment:
+      DATA_SOURCE_NAME: postgresql://postgres:yomu_password@postgres:5432/yomu_db?sslmode=disable
+    networks:
+      - yomu-overlay-net
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+    ports:
+      - "127.0.0.1:9187:9187"
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    ports:
+      - "127.0.0.1:9100:9100"
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro'
+    networks:
+      - yomu-overlay-net
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    ports:
+      - "127.0.0.1:9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    volumes:
+      - prometheus_data:/prometheus
+      - /opt/yomu/prometheus:/etc/prometheus:ro
+    networks:
+      - yomu-overlay-net
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: any
+        delay: 10s
 
   loki:
     image: grafana/loki:3.0.0
     ports:
       - "127.0.0.1:3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
     volumes:
-      - /opt/yomu/loki/loki-config.yml:/etc/loki/config.yml:ro
       - loki_data:/loki
+      - /opt/yomu/loki:/etc/loki:ro
     networks:
       - yomu-overlay-net
     deploy:
       replicas: 1
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
+      update_config:
+        parallelism: 1
+        delay: 10s
 
   tempo:
     image: grafana/tempo:2.5.0
-    command: ["-config.file=/etc/tempo/tempo-config.yml"]
-    ports:
-      - "127.0.0.1:3200:3200"
+    command: ["-config.file=/etc/tempo.yaml"]
     volumes:
-      - /opt/yomu/tempo/tempo-config.yml:/etc/tempo/tempo-config.yml:ro
-      - tempo_data:/var/tempo
+      - tempo_data:/tmp/tempo
+      - /opt/yomu/tempo:/etc/tempo:ro
     networks:
       - yomu-overlay-net
     deploy:
       replicas: 1
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
+      update_config:
+        parallelism: 1
+        delay: 10s
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.104.0
@@ -467,39 +497,37 @@ services:
       - "127.0.0.1:4318:4318"
       - "127.0.0.1:8889:8889"
     volumes:
-      - /opt/yomu/otel/otel-collector-config.yml:/etc/otelcol/config.yml:ro
+      - /opt/yomu/otel/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
     networks:
       - yomu-overlay-net
     deploy:
       replicas: 1
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256M
+      update_config:
+        parallelism: 1
+        delay: 10s
 
   grafana:
     image: grafana/grafana:11.0.0
-    ports:
-      - "127.0.0.1:3000:3000"
     environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-yomu123sukses}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_USER: admin
       GF_USERS_ALLOW_SIGN_UP: "false"
       GF_SERVER_ROOT_URL: "https://monitoring.yomu.my.id/"
-      GF_AUTH_ANONYMOUS_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ORG_NAME: "Main Org."
+      GF_SERVER_SERVE_FROM_SUB_PATH: "false"
     volumes:
       - grafana_data:/var/lib/grafana
-      - /opt/yomu/grafana/provisioning:/etc/grafana/provisioning:ro
-      - /opt/yomu/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - /opt/yomu/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - /opt/yomu/datasources:/etc/grafana/provisioning/datasources:ro
     networks:
       - yomu-overlay-net
     deploy:
       replicas: 1
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256M
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: any
+        delay: 10s
       labels:
         - "traefik.enable=true"
         - "traefik.http.routers.grafana.rule=Host(`monitoring.yomu.my.id`)"
@@ -507,50 +535,16 @@ services:
         - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
         - "traefik.http.services.grafana.loadbalancer.server.port=3000"
 
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.49.1
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker:/var/lib/docker:ro
-      - /dev/disk:/dev/disk:ro
-    ports:
-      - "127.0.0.1:8080:8080"
-    networks:
-      - yomu-overlay-net
-    deploy:
-      resources:
-        limits:
-          cpus: '0.25'
-          memory: 256M
-
-  node-exporter:
-    image: prom/node-exporter:v1.8.2
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    ports:
-      - "127.0.0.1:9100:9100"
-    networks:
-      - yomu-overlay-net
-    deploy:
-      resources:
-        limits:
-          cpus: '0.125'
-          memory: 128M
+networks:
+  yomu-overlay-net:
+    external: true
 
 volumes:
   postgres_data:
   redis_data:
+  postgres_staging_data:
+  redis_staging_data:
+  prometheus_data:
   grafana_data:
   loki_data:
   tempo_data:
-  postgres_staging_data:
-  redis_staging_data:
-
-networks:
-  yomu-overlay-net:
-    external: true
-    name: yomu-overlay-net
