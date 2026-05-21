@@ -2,7 +2,7 @@ http:
   routers:
     frontend-router:
       rule: "Host(`yomu.my.id`)"
-      service: frontend-blue-svc
+      service: frontend-green-svc
       entryPoints:
         - websecure
       tls:
@@ -10,7 +10,7 @@ http:
 
     api-java-router:
       rule: "Host(`yomu.my.id`) && PathPrefix(`/api/java`)"
-      service: java-blue-svc
+      service: java-green-svc
       entryPoints:
         - websecure
       tls:
@@ -18,7 +18,7 @@ http:
 
     api-rust-router:
       rule: "Host(`yomu.my.id`) && PathPrefix(`/api/rust`)"
-      service: rust-blue-svc
+      service: rust-green-svc
       entryPoints:
         - websecure
       tls:
@@ -47,20 +47,20 @@ http:
         - web
 
   services:
-    frontend-blue-svc:
+    frontend-green-svc:
       loadBalancer:
         servers:
-          - url: "http://frontend-blue:3000"
+          - url: "http://frontend-green:3000"
 
-    java-blue-svc:
+    java-green-svc:
       loadBalancer:
         servers:
-          - url: "http://java-blue:8080"
+          - url: "http://java-green:8080"
 
-    rust-blue-svc:
+    rust-green-svc:
       loadBalancer:
         servers:
-          - url: "http://rust-blue:8080"
+          - url: "http://rust-green:8080"
 
     grafana-svc:
       loadBalancer:

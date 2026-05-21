@@ -35,7 +35,6 @@ jobs:
           username: ${{ env.GCP_USER }}
           key: ${{ secrets.GCP_SSH_KEY }}
           envs: IMAGE_TAG,POSTGRES_PASSWORD,JWT_SECRET,INTERNAL_API_KEY,JAVA_CORE_API_KEY,GRAFANA_ADMIN_PASSWORD
-          script_stop: true
           script: |
             set -euo pipefail
             cd "${{ env.DEPLOY_DIR }}"
@@ -79,7 +78,6 @@ jobs:
           host: ${{ env.GCP_HOST }}
           username: ${{ env.GCP_USER }}
           key: ${{ secrets.GCP_SSH_KEY }}
-          script_stop: true
           script: |
             set -euo pipefail
             cd "${{ env.DEPLOY_DIR }}"
