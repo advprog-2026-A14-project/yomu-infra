@@ -29,7 +29,11 @@ fi
 
 echo "=== Deploying GREEN environment (image-tag: ${IMAGE_TAG}) ==="
 
-docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" -f "${REPO_ROOT}/docker-compose/docker-compose.green.yml" up -d
+# Pull latest images first
+docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.green.yml" pull frontend-green java-green rust-green
+
+# Only recreate application containers
+docker compose -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" -f "${REPO_ROOT}/docker-compose/docker-compose.green.yml" up -d --force-recreate frontend-green java-green rust-green
 
 echo "Waiting for GREEN services to become healthy..."
 MAX_ATTEMPTS=60
