@@ -1,6 +1,6 @@
 services:
   frontend-green:
-    image: yomu-frontend:${IMAGE_TAG:-latest}
+    image: ghcr.io/advprog-2026-a14-project/yomu-frontend:${IMAGE_TAG:-latest}
     container_name: frontend-green
     restart: unless-stopped
     environment:
@@ -24,10 +24,11 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '0.5'
           memory: 512M
 
   java-green:
-    image: yomu-backend-java:${IMAGE_TAG:-latest}
+    image: ghcr.io/advprog-2026-a14-project/yomu-backend-java:${IMAGE_TAG:-latest}
     container_name: java-green
     restart: unless-stopped
     environment:
@@ -55,10 +56,11 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '1.0'
           memory: 1G
 
   rust-green:
-    image: yomu-backend-rust:${IMAGE_TAG:-latest}
+    image: ghcr.io/advprog-2026-a14-project/yomu-backend-rust:${IMAGE_TAG:-latest}
     container_name: rust-green
     restart: unless-stopped
     environment:
@@ -88,6 +90,7 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '0.5'
           memory: 512M
 
 networks:
