@@ -1,6 +1,9 @@
 name: Deploy to Production (Blue-Green)
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       image_tag:
@@ -20,7 +23,7 @@ permissions:
 env:
   GCP_HOST: 34.101.41.6
   GCP_USER: pongo
-  DEPLOY_DIR: /home/pongo/yomu-deployment
+  DEPLOY_DIR: /opt/yomu
 
 jobs:
   detect-target:
@@ -299,4 +302,4 @@ jobs:
         env:
           CURRENT_ENV: ${{ needs.detect-target.outputs.current_env }}
           TARGET_ENV: ${{ needs.detect-target.outputs.target_env }}
-          DEPLOY_DIR: /home/pongo/yomu-deployment
+          DEPLOY_DIR: /opt/yomu

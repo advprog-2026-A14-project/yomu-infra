@@ -11,10 +11,6 @@ on:
   push:
     branches:
       - staging
-    paths:
-      - "yomu-deployment/**"
-      - "yomu-deployment/scripts/deploy-staging.sh"
-      - "yomu-deployment/docker-compose/docker-compose.staging.yml"
 
 permissions:
   contents: read
@@ -22,7 +18,7 @@ permissions:
 env:
   GCP_HOST: 34.101.41.6
   GCP_USER: pongo
-  DEPLOY_DIR: /home/pongo/yomu-deployment
+  DEPLOY_DIR: /opt/yomu
 
 jobs:
   deploy-staging:
