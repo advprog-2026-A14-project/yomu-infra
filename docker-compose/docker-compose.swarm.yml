@@ -9,8 +9,8 @@ services:
       - "127.0.0.1:3001:3001"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik/traefik.swarm.yml:/etc/traefik/traefik.yml:ro
-      - traefik/acme.json:/etc/traefik/acme.json
+      - /opt/yomu/traefik/traefik.swarm.yml:/etc/traefik/traefik.yml:ro
+      - /opt/yomu/traefik/acme.json:/etc/traefik/acme.json
     networks:
       - yomu-overlay-net
     deploy:
@@ -34,14 +34,14 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     env_file:
-      - .env
+      - /opt/yomu/.env
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yomu_password}
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
     volumes:
       - postgres_data:/var/lib/postgresql
-      - scripts/init-databases.sql:/docker-entrypoint-initdb.d/02-init-databases.sql:ro
+      - /opt/yomu/scripts/init-databases.sql:/docker-entrypoint-initdb.d/02-init-databases.sql:ro
     networks:
       - yomu-overlay-net
     healthcheck:
@@ -219,7 +219,7 @@ services:
       POSTGRES_DB: yomu_db_staging
     volumes:
       - postgres_staging_data:/var/lib/postgresql
-      - scripts/init-databases.sql:/docker-entrypoint-initdb.d/02-init-databases.sql:ro
+      - /opt/yomu/scripts/init-databases.sql:/docker-entrypoint-initdb.d/02-init-databases.sql:ro
     networks:
       - yomu-overlay-net
     healthcheck:
@@ -374,8 +374,8 @@ services:
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
-      - prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - prometheus/rules:/etc/prometheus/rules:ro
+      - /opt/yomu/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - /opt/yomu/prometheus/rules:/etc/prometheus/rules:ro
     networks:
       - yomu-overlay-net
     deploy:
@@ -420,7 +420,7 @@ services:
     ports:
       - "127.0.0.1:3100:3100"
     volumes:
-      - loki/loki-config.yml:/etc/loki/config.yml:ro
+      - /opt/yomu/loki/loki-config.yml:/etc/loki/config.yml:ro
       - loki_data:/loki
     networks:
       - yomu-overlay-net
@@ -437,7 +437,7 @@ services:
     ports:
       - "127.0.0.1:3200:3200"
     volumes:
-      - tempo/tempo-config.yml:/etc/tempo/tempo-config.yml:ro
+      - /opt/yomu/tempo/tempo-config.yml:/etc/tempo/tempo-config.yml:ro
       - tempo_data:/var/tempo
     networks:
       - yomu-overlay-net
@@ -455,7 +455,7 @@ services:
       - "127.0.0.1:4318:4318"
       - "127.0.0.1:8889:8889"
     volumes:
-      - otel/otel-collector-config.yml:/etc/otelcol/config.yml:ro
+      - /opt/yomu/otel/otel-collector-config.yml:/etc/otelcol/config.yml:ro
     networks:
       - yomu-overlay-net
     deploy:
@@ -478,8 +478,8 @@ services:
       GF_AUTH_ANONYMOUS_ORG_NAME: "Main Org."
     volumes:
       - grafana_data:/var/lib/grafana
-      - grafana/provisioning:/etc/grafana/provisioning:ro
-      - grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - /opt/yomu/grafana/provisioning:/etc/grafana/provisioning:ro
+      - /opt/yomu/grafana/dashboards:/var/lib/grafana/dashboards:ro
     networks:
       - yomu-overlay-net
     deploy:
