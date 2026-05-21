@@ -30,10 +30,9 @@ storage:
   trace:
     backend: local
     local:
-      path: /tmp/tempo/traces
-    pool:
-      max_workers: 100
-      queue_depth: 10000
+      path: /tmp/tempo/blocks
+    wal:
+      path: /tmp/tempo/wal
 
 querier:
   search:
