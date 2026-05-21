@@ -1,0 +1,544 @@
+version: '3.8'
+
+services:
+  traefik:
+    image: traefik:v3.1
+    ports:
+      - "80:80"
+      - "443:443"
+      - "127.0.0.1:3001:3001"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../traefik/traefik.swarm.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/acme.json:/etc/traefik/acme.json
+    networks:
+      - yomu-overlay-net
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.traefik.rule=Host(\`monitoring.yomu.my.id\`)"
+        - "traefik.http.routers.traefik.service=api@internal"
+        - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+
+  postgres:
+    image: postgres:18-alpine
+    ports:
+      - "127.0.0.1:5432:5432"
+    env_file:
+      - ../.env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yomu_password}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ../scripts/init-databases.sql:/docker-entrypoint-initdb.d/02-init-databases.sql:ro
+    networks:
+      - yomu-overlay-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  redis:
+    image: redis:8-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - yomu-overlay-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+  java:
+    image: ghcr.io/advprog-2026-a14-project/yomu-backend-java:main
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/yomu_db
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-yomu_password}
+      SERVER_PORT: "8080"
+      JWT_SECRET: ${JWT_SECRET:-dummy}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      RUST_ENGINE_BASE_URL: http://rust:8080
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dummy}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    networks:
+      - yomu-overlay-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 15s
+        failure_action: rollback
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.java.rule=Host(\`java.yomu.my.id\`)"
+        - "traefik.http.routers.java.service=java"
+        - "traefik.http.routers.java.tls.certresolver=letsencrypt"
+        - "traefik.http.services.java.loadbalancer.server.port=8080"
+        - "traefik.http.services.java.loadbalancer.healthcheck.path=/actuator/health/readiness"
+        - "traefik.http.services.java.loadbalancer.healthcheck.interval=15s"
+
+  rust:
+    image: ghcr.io/advprog-2026-a14-project/yomu-backend-rust:main
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/yomu_engine
+      REDIS_URL: redis://redis:6379
+      APP_HOST: "0.0.0.0"
+      APP_PORT: "8080"
+      JAVA_CORE_URL: http://java:8080
+      JAVA_CORE_API_KEY: ${JAVA_CORE_API_KEY:-dummy}
+      JWT_SECRET: ${JWT_SECRET:-dummy}
+      GRPC_PORT: "50051"
+      SERVER_PORT: "8080"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    networks:
+      - yomu-overlay-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 15s
+        failure_action: rollback
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.rust.rule=Host(\`rust.yomu.my.id\`)"
+        - "traefik.http.routers.rust.service=rust"
+        - "traefik.http.routers.rust.tls.certresolver=letsencrypt"
+        - "traefik.http.services.rust.loadbalancer.server.port=8080"
+        - "traefik.http.services.rust.loadbalancer.healthcheck.path=/health"
+        - "traefik.http.services.rust.loadbalancer.healthcheck.interval=15s"
+
+  frontend:
+    image: ghcr.io/advprog-2026-a14-project/yomu-frontend:main
+    environment:
+      CORE_API_BASE_URL: http://java:8080
+      RUST_ENGINE_URL: http://rust:8080
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      NODE_ENV: production
+    networks:
+      - yomu-overlay-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 15s
+        failure_action: rollback
+        order: start-first
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.frontend.rule=Host(\`yomu.my.id\`)"
+        - "traefik.http.routers.frontend.service=frontend"
+        - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+        - "traefik.http.services.frontend.loadbalancer.server.port=3000"
+        - "traefik.http.services.frontend.loadbalancer.healthcheck.path=/"
+        - "traefik.http.services.frontend.loadbalancer.healthcheck.interval=15s"
+
+  postgres-staging:
+    image: postgres:18-alpine
+    ports:
+      - "127.0.0.1:15432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-yomu_password}
+      POSTGRES_DB: yomu_db_staging
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql
+      - ../scripts/init-databases.sql:/docker-entrypoint-initdb.d/02-init-databases.sql:ro
+    networks:
+      - yomu-overlay-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  redis-staging:
+    image: redis:8-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_staging_data:/data
+    networks:
+      - yomu-overlay-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+  java-staging:
+    image: ghcr.io/advprog-2026-a14-project/yomu-backend-java:staging
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-staging:5432/yomu_db_staging
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-yomu_password}
+      SERVER_PORT: "8080"
+      JWT_SECRET: ${JWT_SECRET:-dummy}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      RUST_ENGINE_BASE_URL: http://rust-staging:8080
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dummy}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    networks:
+      - yomu-overlay-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 15s
+        failure_action: rollback
+        order: start-first
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.java-staging.rule=Host(\`java-staging.yomu.my.id\`)"
+        - "traefik.http.routers.java-staging.service=java-staging"
+        - "traefik.http.routers.java-staging.tls.certresolver=letsencrypt"
+        - "traefik.http.services.java-staging.loadbalancer.server.port=8080"
+        - "traefik.http.services.java-staging.loadbalancer.healthcheck.path=/actuator/health/readiness"
+
+  rust-staging:
+    image: ghcr.io/advprog-2026-a14-project/yomu-backend-rust:staging
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres-staging:5432/yomu_engine_staging
+      REDIS_URL: redis://redis-staging:6379
+      REDIS_KEY_PREFIX: staging_
+      APP_HOST: "0.0.0.0"
+      APP_PORT: "8080"
+      JAVA_CORE_URL: http://java-staging:8080
+      JAVA_CORE_API_KEY: ${JAVA_CORE_API_KEY:-dummy}
+      JWT_SECRET: ${JWT_SECRET:-dummy}
+      SERVER_PORT: "8080"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    networks:
+      - yomu-overlay-net
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 15s
+        failure_action: rollback
+        order: start-first
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.rust-staging.rule=Host(\`rust-staging.yomu.my.id\`)"
+        - "traefik.http.routers.rust-staging.service=rust-staging"
+        - "traefik.http.routers.rust-staging.tls.certresolver=letsencrypt"
+        - "traefik.http.services.rust-staging.loadbalancer.server.port=8080"
+        - "traefik.http.services.rust-staging.loadbalancer.healthcheck.path=/health"
+
+  frontend-staging:
+    image: ghcr.io/advprog-2026-a14-project/yomu-frontend:staging
+    environment:
+      CORE_API_BASE_URL: http://java-staging:8080
+      RUST_ENGINE_URL: http://rust-staging:8080
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      NODE_ENV: staging
+    networks:
+      - yomu-overlay-net
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 15s
+        failure_action: rollback
+        order: start-first
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.frontend-staging.rule=Host(\`staging.yomu.my.id\`)"
+        - "traefik.http.routers.frontend-staging.service=frontend-staging"
+        - "traefik.http.routers.frontend-staging.tls.certresolver=letsencrypt"
+        - "traefik.http.services.frontend-staging.loadbalancer.server.port=3000"
+        - "traefik.http.services.frontend-staging.loadbalancer.healthcheck.path=/"
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    ports:
+      - "127.0.0.1:9090:9090"
+    volumes:
+      - ../prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../prometheus/rules:/etc/prometheus/rules:ro
+    networks:
+      - yomu-overlay-net
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.15.0
+    ports:
+      - "127.0.0.1:9187:9187"
+    environment:
+      DATA_SOURCE_NAME: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-yomu_password}@postgres:5432/postgres?sslmode=disable
+    networks:
+      - yomu-overlay-net
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.125'
+          memory: 128M
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.58.0-alpine
+    ports:
+      - "127.0.0.1:9121:9121"
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    networks:
+      - yomu-overlay-net
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.125'
+          memory: 128M
+
+  loki:
+    image: grafana/loki:3.0.0
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - ../loki/loki-config.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    networks:
+      - yomu-overlay-net
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  tempo:
+    image: grafana/tempo:2.5.0
+    command: ["-config.file=/etc/tempo/tempo-config.yml"]
+    ports:
+      - "127.0.0.1:3200:3200"
+    volumes:
+      - ../tempo/tempo-config.yml:/etc/tempo/tempo-config.yml:ro
+      - tempo_data:/var/tempo
+    networks:
+      - yomu-overlay-net
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    ports:
+      - "127.0.0.1:4317:4317"
+      - "127.0.0.1:4318:4318"
+      - "127.0.0.1:8889:8889"
+    volumes:
+      - ../otel/otel-collector-config.yml:/etc/otelcol/config.yml:ro
+    networks:
+      - yomu-overlay-net
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-yomu123sukses}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "https://monitoring.yomu.my.id/"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_NAME: "Main Org."
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - yomu-overlay-net
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.grafana.rule=Host(\`monitoring.yomu.my.id\`)"
+        - "traefik.http.routers.grafana.service=grafana"
+        - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
+        - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - yomu-overlay-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 256M
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "127.0.0.1:9100:9100"
+    networks:
+      - yomu-overlay-net
+    deploy:
+      resources:
+        limits:
+          cpus: '0.125'
+          memory: 128M
+
+volumes:
+  postgres_data:
+  redis_data:
+  grafana_data:
+  loki_data:
+  tempo_data:
+  postgres_staging_data:
+  redis_staging_data:
+
+networks:
+  yomu-overlay-net:
+    external: true
+    name: yomu-overlay-net

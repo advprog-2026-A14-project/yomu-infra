@@ -1,4 +1,4 @@
-name: Deploy to Production (Blue-Green)
+name: Deploy Swarm Stack
 
 on:
   push:
@@ -10,14 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: "Docker image tag to deploy"
+        description: "Docker image tag to deploy (e.g. main or specific commit SHA)"
         required: false
-        default: "latest"
-        type: string
-      target_env:
-        description: "Target environment (blue/green). Leave blank to auto-detect."
-        required: false
-        default: ""
+        default: "main"
         type: string
 
 permissions:
@@ -29,73 +24,14 @@ env:
   DEPLOY_DIR: /opt/yomu
 
 jobs:
-  detect-target:
-    name: Detect Target Environment
+  deploy:
+    name: Deploy / Update Swarm Stack
     runs-on: ubuntu-latest
-    outputs:
-      target_env: ${{ steps.parse.outputs.target_env }}
-      current_env: ${{ steps.parse.outputs.current_env }}
-    steps:
-      - name: Get current active environment
-        id: ssh
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ env.GCP_HOST }}
-          username: ${{ env.GCP_USER }}
-          key: ${{ secrets.GCP_SSH_KEY }}
-          script: |
-            ROUTING_FILE="${{ env.DEPLOY_DIR }}/traefik/dynamic/routing.yml"
-            if [[ -f "${ROUTING_FILE}" ]]; then
-              if grep -q 'frontend-blue' "${ROUTING_FILE}"; then
-                echo "blue"
-              elif grep -q 'frontend-green' "${ROUTING_FILE}"; then
-                echo "green"
-              else
-                echo "unknown"
-              fi
-            else
-              echo "unknown"
-            fi
-
-      - name: Determine target environment
-        id: parse
-        run: |
-          CURRENT="${{ steps.ssh.outputs.stdout }}"
-          CURRENT="${CURRENT#"${CURRENT%%[![:space:]]*}"}"
-          CURRENT="${CURRENT%"${CURRENT##*[![:space:]]}"}"
-          echo "current_env=${CURRENT}" >> "$GITHUB_OUTPUT"
-          echo "Current active environment: ${CURRENT}"
-
-          TARGET="${{ inputs.target_env }}"
-          if [[ -n "${TARGET}" ]]; then
-            echo "target_env=${TARGET}" >> "$GITHUB_OUTPUT"
-            echo "Manual target selected: ${TARGET}"
-            exit 0
-          fi
-
-          if [[ "${CURRENT}" == "blue" ]]; then
-            echo "target_env=green" >> "$GITHUB_OUTPUT"
-          elif [[ "${CURRENT}" == "green" ]]; then
-            echo "target_env=blue" >> "$GITHUB_OUTPUT"
-          else
-            echo "target_env=blue" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Print deployment plan
-        run: |
-          echo "Current active : ${{ steps.parse.outputs.current_env }}"
-          echo "Will deploy to : ${{ steps.parse.outputs.target_env }}"
-          echo "Image tag      : ${{ inputs.image_tag }}"
-
-  deploy-to-target:
-    name: Deploy to ${{ needs.detect-target.outputs.target_env }}
-    runs-on: ubuntu-latest
-    needs: detect-target
     environment:
       name: production
       url: https://yomu.my.id
     steps:
-      - name: Parse image tag from dispatch or inputs
+      - name: Parse image tag
         id: dispatch
         run: |
           if [[ -n "${{ github.event.client_payload.image_tag }}" ]]; then
@@ -103,112 +39,37 @@ jobs:
           elif [[ -n "${{ inputs.image_tag }}" ]]; then
             echo "image_tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
           else
-            echo "image_tag=latest" >> "$GITHUB_OUTPUT"
+            echo "image_tag=main" >> "$GITHUB_OUTPUT"
           fi
-      - name: Deploy to inactive environment
+
+      - name: Update .env and deploy swarm stack
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ env.GCP_HOST }}
           username: ${{ env.GCP_USER }}
           key: ${{ secrets.GCP_SSH_KEY }}
-          envs: IMAGE_TAG,TARGET_ENV,POSTGRES_PASSWORD,JWT_SECRET,INTERNAL_API_KEY,JAVA_CORE_API_KEY,GRAFANA_ADMIN_PASSWORD
+          envs: IMAGE_TAG,DEPLOY_DIR
           script: |
             set -euo pipefail
-            cd "${{ env.DEPLOY_DIR }}"
+            cd "${DEPLOY_DIR}"
 
-            for var in POSTGRES_PASSWORD JWT_SECRET INTERNAL_API_KEY JAVA_CORE_API_KEY GRAFANA_ADMIN_PASSWORD; do
-              val="${!var}"
-              if [[ -z "${val}" ]]; then
-                echo "SKIP: ${var} is empty in GitHub Secrets — preserving existing .env value"
-                continue
-              fi
-              if grep -q "^${var}=" .env 2>/dev/null; then
-                sed -i "s/^${var}=.*/${var}=${val}/" .env
-              else
-                echo "${var}=${val}" >> .env
-              fi
-            done
+            # Ensure .env exists and has sane defaults (do NOT overwrite with empty secrets)
+            if [[ ! -f .env ]]; then
+              touch .env
+            fi
+            # Write image tag override if needed
+            export IMAGE_TAG="${IMAGE_TAG}"
+            echo "IMAGE_TAG=${IMAGE_TAG}" >> .env
 
-            for var in POSTGRES_PASSWORD JWT_SECRET INTERNAL_API_KEY JAVA_CORE_API_KEY GRAFANA_ADMIN_PASSWORD; do
-              current_val=$(grep "^${var}=" .env 2>/dev/null | cut -d'=' -f2-)
-              if [[ -z "${current_val}" ]]; then
-                echo "ERROR: ${var} is empty in .env — deployment blocked."
-                echo "Fix the ${var} GitHub Secret in yomu-infra repo before retrying."
-                exit 1
-              fi
-            done
-
-            # Ensure critical variables arent empty after update.
-            for var in POSTGRES_PASSWORD JWT_SECRET INTERNAL_API_KEY JAVA_CORE_API_KEY GRAFANA_ADMIN_PASSWORD; do
-              current_val=$(grep "^${var}=" .env 2>/dev/null | cut -d'=' -f2-)
-              if [[ -z "${current_val}" ]]; then
-                echo "ERROR: ${var} is empty in .env — deployment blocked."
-                echo "Fix the ${var} GitHub Secret in yomu-infra repo before retrying."
-                exit 1
-              fi
-            done
-
-            echo "=== Deploying ${TARGET_ENV} environment (tag: ${IMAGE_TAG}) ==="
-            bash scripts/deploy-${TARGET_ENV}.sh --image-tag "${IMAGE_TAG}"
-            echo "Deployment script completed."
+            echo "=== Deploying Swarm stack with image tag: ${IMAGE_TAG} ==="
+            docker stack deploy -c docker-compose/docker-compose.swarm.yml yomu
         env:
           IMAGE_TAG: ${{ steps.dispatch.outputs.image_tag }}
-          TARGET_ENV: ${{ needs.detect-target.outputs.target_env }}
-          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}
-          JAVA_CORE_API_KEY: ${{ secrets.JAVA_CORE_API_KEY }}
-          GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
 
-  health-check:
-    name: Health Check
-    runs-on: ubuntu-latest
-    needs: [detect-target, deploy-to-target]
-    steps:
-      - name: Wait for services to stabilize
-        run: sleep 10
+      - name: Wait for rolling update
+        run: sleep 45
 
-      - name: Check target services are healthy
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ env.GCP_HOST }}
-          username: ${{ env.GCP_USER }}
-          key: ${{ secrets.GCP_SSH_KEY }}
-          envs: TARGET_ENV
-          script: |
-            set -euo pipefail
-            cd "${{ env.DEPLOY_DIR }}"
-            COMPOSE_FILE="docker-compose/docker-compose.${TARGET_ENV}.yml"
-
-            MAX_ATTEMPTS=30
-            ATTEMPT=0
-            ALL_HEALTHY=false
-
-            while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
-              ATTEMPT=$((ATTEMPT + 1))
-              UNHEALTHY=$(docker compose -f "docker-compose/docker-compose.shared.yml" -f "${COMPOSE_FILE}" ps --format '{{.Name}} {{.Health}}' 2>/dev/null | grep -v -E '(healthy|starting)' || true)
-
-              if [[ -z "${UNHEALTHY}" ]]; then
-                ALL_HEALTHY=true
-                break
-              fi
-
-              echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: services still starting..."
-              sleep 5
-            done
-
-            if [[ "${ALL_HEALTHY}" != "true" ]]; then
-              echo "ERROR: Services did not become healthy within $((MAX_ATTEMPTS * 5)) seconds"
-              docker compose -f "docker-compose/docker-compose.shared.yml" -f "${COMPOSE_FILE}" ps
-              exit 1
-            fi
-
-            echo "All services are healthy."
-            docker compose -f "docker-compose/docker-compose.shared.yml" -f "${COMPOSE_FILE}" ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
-        env:
-          TARGET_ENV: ${{ needs.detect-target.outputs.target_env }}
-
-      - name: Smoke test endpoints via localhost
+      - name: Smoke test endpoints
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ env.GCP_HOST }}
@@ -244,80 +105,5 @@ jobs:
               FAIL=$((FAIL + 1))
             fi
 
-            echo ""
             echo "Smoke tests: ${PASS} passed, ${FAIL} failed"
-
-            if [[ ${FAIL} -gt 0 ]]; then
-              exit 1
-            fi
-
-  switch-traffic:
-    name: Switch Traffic
-    runs-on: ubuntu-latest
-    needs: [detect-target, health-check]
-    steps:
-      - name: Run switch-traffic.sh
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ env.GCP_HOST }}
-          username: ${{ env.GCP_USER }}
-          key: ${{ secrets.GCP_SSH_KEY }}
-          envs: TARGET_ENV
-          script: |
-            set -euo pipefail
-            cd "${{ env.DEPLOY_DIR }}"
-            bash scripts/switch-traffic.sh "${TARGET_ENV}"
-        env:
-          TARGET_ENV: ${{ needs.detect-target.outputs.target_env }}
-
-  schedule-cleanup:
-    name: Schedule Old Environment Cleanup
-    runs-on: ubuntu-latest
-    needs: [detect-target, switch-traffic]
-    steps:
-      - name: Schedule old environment auto-stop after 30 minutes
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ env.GCP_HOST }}
-          username: ${{ env.GCP_USER }}
-          key: ${{ secrets.GCP_SSH_KEY }}
-          envs: CURRENT_ENV,TARGET_ENV,DEPLOY_DIR
-          script: |
-            set -euo pipefail
-            cd "${DEPLOY_DIR}"
-
-            if [[ "${CURRENT_ENV}" == "unknown" || "${CURRENT_ENV}" == "${TARGET_ENV}" ]]; then
-              echo "No previous environment to stop."
-              exit 0
-            fi
-
-            OLD="${CURRENT_ENV}"
-            echo "Scheduling ${OLD} environment stop in 30 minutes..."
-
-            # Create a one-shot script to stop old environment
-            STOP_SCRIPT="/tmp/stop-${OLD}-job.sh"
-            printf '%s\n' '#!/bin/bash' 'set -euo pipefail' "cd \"${DEPLOY_DIR}\" && docker compose -f docker-compose/docker-compose.${OLD}.yml down || true" > "${STOP_SCRIPT}"
-            chmod +x "${STOP_SCRIPT}"
-
-            # Schedule with at in 30 minutes
-            if command -v at >/dev/null 2>&1; then
-              echo "bash /tmp/stop-${OLD}-job.sh" | at now + 30 minutes
-              echo "Scheduled auto-stop of ${OLD} environment via at."
-            else
-              # Fallback: background nohup sleep
-              nohup bash -c "sleep 1800 && bash /tmp/stop-${OLD}-job.sh" > "/tmp/stop-${OLD}.log" 2>&1 &
-              echo "Scheduled auto-stop of ${OLD} environment via background sleep (1800s)."
-            fi
-
-            echo ""
-            echo "=== Deployment Summary ==="
-            echo "Previous environment : ${OLD}"
-            echo "Current environment  : ${TARGET_ENV}"
-            echo "Auto-stop scheduled  : ${OLD} in 30 minutes"
-            echo "To cancel auto-stop, SSH to the host and run:"
-            echo "  atrm \u003cjobnumber\u003e   (if using at)"
-            echo "  pkill -f 'stop-${OLD}-job'"
-        env:
-          CURRENT_ENV: ${{ needs.detect-target.outputs.current_env }}
-          TARGET_ENV: ${{ needs.detect-target.outputs.target_env }}
-          DEPLOY_DIR: /opt/yomu
+            [[ ${FAIL} -eq 0 ]] || exit 1

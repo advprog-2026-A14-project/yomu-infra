@@ -1,0 +1,38 @@
+api:
+  dashboard: true
+
+ping: {}
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: yomu-overlay-net
+    swarmMode: true
+    watch: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
+  websecure:
+    address: ":443"
+
+metrics:
+  prometheus: {}
+
+accessLog: {}
+
+log:
+  level: WARN
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      tlsChallenge: {}
+      email: admin@yomu.my.id
+      storage: /etc/traefik/acme.json
