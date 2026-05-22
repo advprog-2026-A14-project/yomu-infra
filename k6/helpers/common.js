@@ -3,12 +3,28 @@ import { check } from 'k6';
 import { randomString } from 'https://jslib.k6.io/k6-utils/1.5.0/index.js';
 
 /**
- * Returns the base URL for all requests.
- * Defaults to http://localhost, overridable via K6_BASE_URL env var.
- * @returns {string} Base URL (e.g. "http://localhost")
+ * Returns the base URL for frontend requests.
+ * Defaults to https://yomu.my.id, overridable via K6_FRONTEND_URL env var.
+ * @returns {string} Frontend base URL
  */
 export function getBaseUrl() {
-  return __ENV.K6_BASE_URL || 'http://localhost';
+  return __ENV.K6_BASE_URL || __ENV.K6_FRONTEND_URL || 'https://yomu.my.id';
+}
+
+/**
+ * Returns the Java backend base URL.
+ * @returns {string} Java base URL
+ */
+export function getJavaUrl() {
+  return __ENV.K6_JAVA_URL || 'https://java.yomu.my.id';
+}
+
+/**
+ * Returns the Rust backend base URL.
+ * @returns {string} Rust base URL
+ */
+export function getRustUrl() {
+  return __ENV.K6_RUST_URL || 'https://rust.yomu.my.id';
 }
 
 /**

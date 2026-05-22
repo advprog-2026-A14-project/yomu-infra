@@ -1,6 +1,6 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
-import { getBaseUrl, checkResponse } from '../helpers/common.js';
+import { getBaseUrl, getJavaUrl, getRustUrl, checkResponse } from '../helpers/common.js';
 
 export const options = {
   vus: 1,
@@ -11,27 +11,25 @@ export const options = {
   },
 };
 
-const BASE_URL = getBaseUrl();
+const FRONTEND_URL = getBaseUrl();
+const JAVA_URL = getJavaUrl();
+const RUST_URL = getRustUrl();
 
-/**
- * Smoke test — validates that all services are up and responding
- * before switching traffic in a blue-green deployment.
- */
 export default function () {
   // --- Frontend homepage ---
-  const frontendRes = http.get(`${BASE_URL}/`);
+  const frontendRes = http.get(`${FRONTEND_URL}/`);
   checkResponse(frontendRes, 200, 'Frontend homepage');
 
   // --- Java backend: readiness probe ---
-  const javaReadinessRes = http.get(`${BASE_URL}/api/java/actuator/health/readiness`);
+  const javaReadinessRes = http.get(`${JAVA_URL}/actuator/health/readiness`);
   checkResponse(javaReadinessRes, 200, 'Java readiness');
 
   // --- Java backend: liveness probe ---
-  const javaLivenessRes = http.get(`${BASE_URL}/api/java/actuator/health/liveness`);
+  const javaLivenessRes = http.get(`${JAVA_URL}/actuator/health/liveness`);
   checkResponse(javaLivenessRes, 200, 'Java liveness');
 
   // --- Rust backend: health check ---
-  const rustHealthRes = http.get(`${BASE_URL}/api/rust/health`);
+  const rustHealthRes = http.get(`${RUST_URL}/health`);
   checkResponse(rustHealthRes, 200, 'Rust health');
 
   sleep(1);

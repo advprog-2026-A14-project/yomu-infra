@@ -528,7 +528,7 @@ services:
     image: grafana/loki:3.0.0
     ports:
       - "127.0.0.1:3100:3100"
-    command: -config.file=/etc/loki/local-config.yaml
+    command: -config.file=/etc/loki/loki-config.yml
     volumes:
       - loki_data:/loki
       - /opt/yomu/loki:/etc/loki:ro
