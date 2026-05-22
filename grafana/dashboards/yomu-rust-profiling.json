@@ -39,7 +39,7 @@
         }
       },
       "targets": [
-        {"expr": "sum by (method, route) (rate(axum_prometheus_requests_total{job=~\"rust|rust-staging\"}[1m])) > 0", "legendFormat": "{{method}} {{route}}", "refId": "A"}
+        {"expr": "sum by (method, endpoint) (rate(axum_http_requests_total{job=~\"rust|rust-staging\"}[1m])) > 0", "legendFormat": "{{method}} {{endpoint}}", "refId": "A"}
       ]
     },
     {
@@ -56,8 +56,8 @@
         }
       },
       "targets": [
-        {"expr": "histogram_quantile(0.50, sum by (le, route) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~\"rust|rust-staging\"}[1m]))) > 0", "legendFormat": "p50 {{route}}", "refId": "A"},
-        {"expr": "histogram_quantile(0.99, sum by (le, route) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~\"rust|rust-staging\"}[1m]))) > 0", "legendFormat": "p99 {{route}}", "refId": "B"}
+        {"expr": "histogram_quantile(0.50, sum by (le, endpoint) (rate(axum_http_requests_duration_seconds_bucket{job=~\"rust|rust-staging\"}[1m]))) > 0", "legendFormat": "p50 {{endpoint}}", "refId": "A"},
+        {"expr": "histogram_quantile(0.99, sum by (le, endpoint) (rate(axum_http_requests_duration_seconds_bucket{job=~\"rust|rust-staging\"}[1m]))) > 0", "legendFormat": "p99 {{endpoint}}", "refId": "B"}
       ]
     },
     {
@@ -74,7 +74,7 @@
         }
       },
       "targets": [
-        {"expr": "sum by (status) (rate(axum_prometheus_requests_total{job=~\"rust|rust-staging\"}[1m]))", "legendFormat": "HTTP {{status}}", "refId": "A"}
+        {"expr": "sum by (status) (rate(axum_http_requests_total{job=~\"rust|rust-staging\"}[1m]))", "legendFormat": "HTTP {{status}}", "refId": "A"}
       ]
     },
     {
@@ -91,12 +91,12 @@
         }
       },
       "targets": [
-        {"expr": "(sum by (job) (rate(axum_prometheus_requests_total{job=~\"rust|rust-staging\",status=~\"4..|5..\"}[1m])) or on() vector(0)) / (sum by (job) (rate(axum_prometheus_requests_total{job=~\"rust|rust-staging\"}[1m])) or on() vector(0)) * 100", "legendFormat": "{{job}} error %", "refId": "A"}
+        {"expr": "(sum by (job) (rate(axum_http_requests_total{job=~\"rust|rust-staging\",status=~\"4..|5..\"}[1m])) or on() vector(0)) / (sum by (job) (rate(axum_http_requests_total{job=~\"rust|rust-staging\"}[1m])) or on() vector(0)) * 100", "legendFormat": "{{job}} error %", "refId": "A"}
       ]
     },
     {
       "id": 5,
-      "title": "Rust → CPU Utilization",
+      "title": "Rust → Pending HTTP Requests (in-flight)",
       "type": "timeseries",
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
@@ -104,16 +104,16 @@
         "defaults": {
           "color": {"mode": "palette-classic"},
           "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
-          "unit": "percentunit"
+          "unit": "short"
         }
       },
       "targets": [
-        {"expr": "process_cpu_seconds_total{job=~\"rust|rust-staging\"} / 1e9", "legendFormat": "{{job}}", "refId": "A"}
+        {"expr": "sum by (job) (axum_http_requests_pending{job=~\"rust|rust-staging\"})", "legendFormat": "{{job}} pending", "refId": "A"}
       ]
     },
     {
       "id": 6,
-      "title": "Rust → Resident Memory (RSS)",
+      "title": "Rust → Top HTTP Endpoints by Status",
       "type": "timeseries",
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
@@ -121,16 +121,17 @@
         "defaults": {
           "color": {"mode": "palette-classic"},
           "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
-          "unit": "bytes"
+          "unit": "reqps"
         }
       },
       "targets": [
-        {"expr": "process_resident_memory_bytes{job=~\"rust|rust-staging\"}", "legendFormat": "{{job}} RSS", "refId": "A"}
+        {"expr": "sum by (endpoint, status) (rate(axum_http_requests_total{job=~\"rust|rust-staging\", endpoint!=\"/metrics\", endpoint!=\"/health\"}[1m]))
+", "legendFormat": "{{endpoint}} {{status}}", "refId": "A"}
       ]
     },
     {
       "id": 7,
-      "title": "Rust → Tokio Active Tasks",
+      "title": "Rust → Rate-limited / 5xx Hot Endpoints",
       "type": "timeseries",
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
@@ -138,16 +139,17 @@
         "defaults": {
           "color": {"mode": "palette-classic"},
           "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
-          "unit": "short"
+          "unit": "reqps"
         }
       },
       "targets": [
-        {"expr": "tokio_tasks_count{job=~\"rust|rust-staging\"}", "legendFormat": "{{job}} - active tasks", "refId": "A"}
+        {"expr": "sum by (endpoint) (rate(axum_http_requests_total{job=~\"rust|rust-staging\",status=~\"4..|5..\"}[1m]))
+", "legendFormat": "{{endpoint}} errors", "refId": "A"}
       ]
     },
     {
       "id": 8,
-      "title": "Rust → Custom Business Metrics",
+      "title": "Rust → Total Success Requests/sec",
       "type": "timeseries",
       "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
@@ -155,12 +157,12 @@
         "defaults": {
           "color": {"mode": "palette-classic"},
           "custom": {"fillOpacity": 20, "gradientMode": "opacity", "lineWidth": 2},
-          "unit": "short"
+          "unit": "reqps"
         }
       },
       "targets": [
-        {"expr": "rate(yomu_leaderboard_requests_total{job=~\"rust|rust-staging\"}[1m])", "legendFormat": "{{job}} leaderboard/s", "refId": "A"},
-        {"expr": "rate(yomu_clan_requests_total{job=~\"rust|rust-staging\"}[1m])", "legendFormat": "{{job}} clan/s", "refId": "B"}
+        {"expr": "sum by (job) (rate(axum_http_requests_total{job=~\"rust|rust-staging\",status!~\"4..|5..\"}[1m]))
+", "legendFormat": "{{job}} success", "refId": "A"}
       ]
     }
   ],
