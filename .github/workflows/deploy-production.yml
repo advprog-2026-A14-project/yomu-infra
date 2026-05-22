@@ -22,6 +22,8 @@ env:
   GCP_HOST: 34.101.41.6
   GCP_USER: pongo
   DEPLOY_DIR: /opt/yomu
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
 
 jobs:
   deploy:
@@ -47,10 +49,16 @@ jobs:
           host: ${{ env.GCP_HOST }}
           username: ${{ env.GCP_USER }}
           key: ${{ secrets.GCP_SSH_KEY }}
-          envs: IMAGE_TAG
+          envs: IMAGE_TAG,GH_TOKEN
           script: |
             set -euo pipefail
             cd /opt/yomu
+
+            # Switch remote to HTTPS and configure credential helper
+            git remote set-url origin https://github.com/advprog-2026-A14-project/yomu-infra.git
+            git config --global credential.helper "store"
+            echo "https://x-access-token:${GH_TOKEN}@github.com" > ~/.git-credentials
+
             git pull origin main
             export IMAGE_TAG="${IMAGE_TAG}"
             echo "=== Deploying Swarm stack (infra only) ==="
