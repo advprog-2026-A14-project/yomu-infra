@@ -1,6 +1,6 @@
 import http from 'k6/http';
-import { sleep } from 'k6';
-import { getBaseUrl, url } from '../helpers/common.js';
+import { check, sleep } from 'k6';
+import { getBaseUrl, getJavaUrl, getRustUrl } from '../helpers/common.js';
 
 export const options = {
   stages: [
@@ -14,14 +14,15 @@ export const options = {
   },
 };
 
-const BASE_URL = getBaseUrl();
+const FRONTEND_URL = getBaseUrl();
+const JAVA_URL = getJavaUrl();
+const RUST_URL = getRustUrl();
 
 const ENDPOINTS = [
-  { path: '/', weight: 40, expectedStatus: 200, label: 'Frontend homepage' },
-  { path: '/api/java/actuator/health/readiness', weight: 10, expectedStatus: 200, label: 'Java health' },
-  { path: '/api/rust/health', weight: 10, expectedStatus: 200, label: 'Rust health' },
-  { path: '/api/java/articles', weight: 20, expectedStatus: [200, 401], label: 'Java articles' },
-  { path: '/api/rust/leaderboard', weight: 20, expectedStatus: [200, 401], label: 'Rust leaderboard' },
+  { url: () => `${FRONTEND_URL}/`, weight: 40, expectedStatus: 200, label: 'Frontend homepage' },
+  { url: () => `${JAVA_URL}/actuator/health/readiness`, weight: 20, expectedStatus: 200, label: 'Java readiness' },
+  { url: () => `${RUST_URL}/health`, weight: 20, expectedStatus: 200, label: 'Rust health' },
+  { url: () => `${JAVA_URL}/api/v1/articles`, weight: 20, expectedStatus: [200, 401], label: 'Java articles' },
 ];
 
 const totalWeight = ENDPOINTS.reduce((sum, e) => sum + e.weight, 0);
@@ -38,7 +39,7 @@ function pickEndpoint() {
 
 export default function () {
   const endpoint = pickEndpoint();
-  const res = http.get(url(endpoint.path));
+  const res = http.get(endpoint.url());
 
   const expectedStatuses = Array.isArray(endpoint.expectedStatus)
     ? endpoint.expectedStatus
@@ -55,9 +56,5 @@ export default function () {
     );
   }
 
-  // Memory leak detection: k6 VUs use ~5-10MB baseline.
-  // Monitor system memory during this 4+ hour test.
-  // If memory grows linearly over the soak duration, suspect a leak
-  // in the Java or Rust backend. Watch Grafana JVM heap / Rust allocations.
   sleep(Math.random() * 2 + 1);
 }

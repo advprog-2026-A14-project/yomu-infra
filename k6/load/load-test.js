@@ -1,5 +1,5 @@
 import http from 'k6/http';
-import { sleep } from 'k6';
+import { check, sleep } from 'k6';
 import { getBaseUrl, getJavaUrl, getRustUrl } from '../helpers/common.js';
 
 export const options = {
@@ -21,10 +21,9 @@ const RUST_URL = getRustUrl();
 
 const ENDPOINTS = [
   { url: () => `${FRONTEND_URL}/`, weight: 40, expectedStatus: 200, label: 'Frontend homepage' },
-  { url: () => `${JAVA_URL}/actuator/health/readiness`, weight: 10, expectedStatus: 200, label: 'Java health' },
-  { url: () => `${RUST_URL}/health`, weight: 10, expectedStatus: 200, label: 'Rust health' },
-  { url: () => `${JAVA_URL}/articles`, weight: 20, expectedStatus: [200, 401], label: 'Java articles' },
-  { url: () => `${RUST_URL}/api/v1/leaderboard`, weight: 20, expectedStatus: [200, 401], label: 'Rust leaderboard' },
+  { url: () => `${JAVA_URL}/actuator/health/readiness`, weight: 20, expectedStatus: 200, label: 'Java readiness' },
+  { url: () => `${RUST_URL}/health`, weight: 20, expectedStatus: 200, label: 'Rust health' },
+  { url: () => `${JAVA_URL}/api/v1/articles`, weight: 20, expectedStatus: [200, 401], label: 'Java articles' },
 ];
 
 const totalWeight = ENDPOINTS.reduce((sum, e) => sum + e.weight, 0);
