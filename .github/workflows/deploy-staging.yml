@@ -52,6 +52,7 @@ jobs:
           script: |
             set -euo pipefail
             cd "${{ env.DEPLOY_DIR }}"
+            git pull origin staging
 
             # Update .env secrets if provided
             for var in POSTGRES_PASSWORD JWT_SECRET INTERNAL_API_KEY JAVA_CORE_API_KEY GRAFANA_ADMIN_PASSWORD; do
