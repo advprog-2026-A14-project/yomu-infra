@@ -76,10 +76,8 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-yomu_password}
       SERVER_PORT: "8080"
-      JWT_SECRET: ${JWT_SECRET:-dummy}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       RUST_ENGINE_BASE_URL: http://rust:8080
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dummy}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     networks:
       - yomu-overlay-net
@@ -117,14 +115,12 @@ services:
     env_file:
       - /opt/yomu/.env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/yomu_engine
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-yomu_password}@postgres:5432/yomu_engine
       REDIS_URL: redis://redis:6379
       REDIS_KEY_PREFIX: prod_
       APP_HOST: "0.0.0.0"
       APP_PORT: "8080"
       JAVA_CORE_URL: http://java:8080
-      JAVA_CORE_API_KEY: ${JAVA_CORE_API_KEY:-dummy}
-      JWT_SECRET: ${JWT_SECRET:-dummy}
       SERVER_PORT: "8080"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     networks:
@@ -254,10 +250,8 @@ services:
       SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-yomu_password}
       SERVER_PORT: "8080"
-      JWT_SECRET: ${JWT_SECRET:-dummy}
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       RUST_ENGINE_BASE_URL: http://rust-staging:8080
-      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dummy}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     networks:
       - yomu-overlay-net
@@ -291,14 +285,12 @@ services:
     env_file:
       - /opt/yomu/.env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres-staging:5432/yomu_engine_staging
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-yomu_password}@postgres-staging:5432/yomu_engine_staging
       REDIS_URL: redis://redis-staging:6379
       REDIS_KEY_PREFIX: staging_
       APP_HOST: "0.0.0.0"
       APP_PORT: "8080"
       JAVA_CORE_URL: http://java-staging:8080
-      JAVA_CORE_API_KEY: ${JAVA_CORE_API_KEY:-dummy}
-      JWT_SECRET: ${JWT_SECRET:-dummy}
       SERVER_PORT: "8080"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     networks:

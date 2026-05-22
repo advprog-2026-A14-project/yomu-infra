@@ -32,3 +32,12 @@ EOF
 docker-compose.yml.bak
 docker-compose/traefik/
 
+# Blue-green artifacts removed after Swarm migration
+scripts/deploy-blue.sh
+scripts/deploy-green.sh
+scripts/switch-traffic.sh
+scripts/auto-rollback-monitor.sh
+scripts/full-deploy.sh
+scripts/rollback.sh
+
+
