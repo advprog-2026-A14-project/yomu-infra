@@ -74,7 +74,7 @@ scrape_configs:
     metrics_path: /metrics
     static_configs:
       - targets:
-          - rust-staging:8080
+          - yomu_rust-staging:8080
         labels:
           environment: staging
           service: rust
