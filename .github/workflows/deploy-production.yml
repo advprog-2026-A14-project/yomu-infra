@@ -52,9 +52,29 @@ jobs:
             set -euo pipefail
             cd /opt/yomu
             export IMAGE_TAG="${IMAGE_TAG}"
-            echo "=== Deploying Swarm stack with image tag: ${IMAGE_TAG} ==="
+            echo "=== Deploying Swarm stack (infra only) ==="
             docker stack deploy -c docker-compose/docker-compose.swarm.yml yomu
+
+            echo "=== Updating production app images ==="
+            REPO="ghcr.io/advprog-2026-a14-project"
+
+            docker service update \
+              --with-registry-auth \
+              --image "${REPO}/yomu-backend-java:${IMAGE_TAG}" \
+              yomu_java
+
+            docker service update \
+              --with-registry-auth \
+              --image "${REPO}/yomu-backend-rust:${IMAGE_TAG}" \
+              yomu_rust
+
+            docker service update \
+              --with-registry-auth \
+              --image "${REPO}/yomu-frontend:${IMAGE_TAG}" \
+              yomu_frontend
+
             echo "=== Deployment complete ==="
+            echo "Image tag: ${IMAGE_TAG}"
         env:
           IMAGE_TAG: ${{ steps.dispatch.outputs.image_tag }}
 
