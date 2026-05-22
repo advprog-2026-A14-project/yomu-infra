@@ -167,7 +167,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=~\"java\"}[5m])) by (le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_server_requests_seconds_bucket{job=\"java\"}[5m])) by (le))",
           "legendFormat": "Production",
           "refId": "A"
         },
@@ -211,7 +211,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
       "targets": [
         {
-          "expr": "sum(jvm_memory_used_bytes{job=~\"java\", area=\"heap\"}) / sum(jvm_memory_max_bytes{job=~\"java\", area=\"heap\"})",
+          "expr": "sum(jvm_memory_used_bytes{job=\"java\", area=\"heap\"}) / sum(jvm_memory_max_bytes{job=\"java\", area=\"heap\"})",
           "legendFormat": "Production Heap",
           "refId": "A"
         },
@@ -273,7 +273,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=~\"rust\"}[5m]))",
+          "expr": "sum(rate(http_requests_total{job=\"rust\"}[5m]))",
           "legendFormat": "Production",
           "refId": "A"
         },
@@ -317,7 +317,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 12, "y": 17 },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=~\"rust\",status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=~\"rust\"}[5m]))",
+          "expr": "sum(rate(http_requests_total{job=\"rust\",status_code=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"rust\"}[5m]))",
           "legendFormat": "Production",
           "refId": "A"
         },
@@ -378,7 +378,7 @@
       "gridPos": { "h": 8, "w": 12, "x": 0, "y": 26 },
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{job=~\"frontend\"}[5m]))",
+          "expr": "sum(rate(http_requests_total{job=\"frontend\"}[5m]))",
           "legendFormat": "Production",
           "refId": "A"
         },

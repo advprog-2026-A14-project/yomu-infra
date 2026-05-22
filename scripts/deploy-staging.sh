@@ -27,19 +27,30 @@ if ! docker info > /dev/null 2>&1; then
   exit 1
 fi
 
-echo "=== Deploying STAGING environment (image-tag: ${IMAGE_TAG}) ==="
+if ! docker info --format '{{.Swarm.LocalNodeState}}' | grep -q "active"; then
+  echo "ERROR: Docker Swarm is not active"
+  exit 1
+fi
 
-# Pull latest images using both compose files so dependencies resolve
-# (e.g., rust-staging depends_on postgres which is defined in shared.yml)
-docker compose \
-  -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \
-  -f "${REPO_ROOT}/docker-compose/docker-compose.staging.yml" \
-  pull frontend-staging java-staging rust-staging
+echo "=== Deploying STAGING services via Swarm (image-tag: ${IMAGE_TAG}) ==="
 
-docker compose \
-  -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \
-  -f "${REPO_ROOT}/docker-compose/docker-compose.staging.yml" \
-  up -d --force-recreate --no-deps frontend-staging java-staging rust-staging
+echo "Updating java-staging..."
+docker service update \
+  --with-registry-auth \
+  --image "ghcr.io/advprog-2026-a14-project/yomu-backend-java:${IMAGE_TAG}" \
+  yomu_java-staging
+
+echo "Updating rust-staging..."
+docker service update \
+  --with-registry-auth \
+  --image "ghcr.io/advprog-2026-a14-project/yomu-backend-rust:${IMAGE_TAG}" \
+  yomu_rust-staging
+
+echo "Updating frontend-staging..."
+docker service update \
+  --with-registry-auth \
+  --image "ghcr.io/advprog-2026-a14-project/yomu-frontend:${IMAGE_TAG}" \
+  yomu_frontend-staging
 
 echo "Waiting for STAGING services to become healthy..."
 MAX_ATTEMPTS=60
@@ -48,34 +59,37 @@ ALL_HEALTHY=false
 
 while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
   ATTEMPT=$((ATTEMPT + 1))
-  UNHEALTHY=$(docker compose \
-    -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \
-    -f "${REPO_ROOT}/docker-compose/docker-compose.staging.yml" \
-    ps --format '{{.Name}} {{.Health}}' 2>/dev/null | grep -v -E '(healthy|starting)' || true)
+
+  UNHEALTHY=$(docker service ls \
+    --format '{{.Name}} {{.Replicas}}' |
+    grep -E 'yomu_(java-staging|rust-staging|frontend-staging)' |
+    awk '$2 !~ /1\/1/ {print $1 " " $2}' || true)
 
   if [[ -z "${UNHEALTHY}" ]]; then
     ALL_HEALTHY=true
     break
   fi
 
-  echo "  Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: services still starting... (${UNHEALTHY//$'\n'/, })"
+  if [[ $ATTEMPT -eq 1 ]]; then
+    echo "  Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: waiting for services to start..."
+  elif [[ $((ATTEMPT % 6)) -eq 0 ]]; then
+    echo "  Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: still waiting... (${UNHEALTHY//$'\n'/, })"
+  fi
+
   sleep 5
 done
 
 if [[ "${ALL_HEALTHY}" != "true" ]]; then
-  echo "ERROR: STAGING services did not become healthy within $((MAX_ATTEMPTS * 5)) seconds"
-  docker compose \
-    -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \
-    -f "${REPO_ROOT}/docker-compose/docker-compose.staging.yml" \
-    ps
+  echo "ERROR: STAGING services did not reach 1/1 replicas within $((MAX_ATTEMPTS * 5)) seconds"
+  docker service ls --filter name=yomu_ --format 'table {{.Name}}\t{{.Replicas}}\t{{.Image}}'
   exit 1
 fi
 
 echo ""
-echo "=== STAGING environment deployed successfully ==="
-docker compose \
-  -f "${REPO_ROOT}/docker-compose/docker-compose.shared.yml" \
-  -f "${REPO_ROOT}/docker-compose/docker-compose.staging.yml" \
-  ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
+echo "=== STAGING services deployed successfully ==="
+docker service ls --filter name=yomu_ --format 'table {{.Name}}\t{{.Replicas}}\t{{.Image}}'
 echo ""
-echo "Staging is available at: http://staging.yomu.my.id"
+echo "Staging is available at: https://staging.yomu.my.id"
+echo "API endpoints:"
+echo "  https://java-staging.yomu.my.id"
+echo "  https://rust-staging.yomu.my.id"

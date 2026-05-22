@@ -1,6 +1,9 @@
 name: Deploy to Staging
 
 on:
+  push:
+    branches:
+      - staging
   repository_dispatch:
     types:
       - deploy-trigger
@@ -39,7 +42,7 @@ jobs:
             echo "image_tag source: workflow_dispatch inputs or default"
           fi
 
-      - name: Pull latest staging images and restart containers
+      - name: Update staging services on Swarm
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ env.GCP_HOST }}
@@ -50,6 +53,7 @@ jobs:
             set -euo pipefail
             cd "${{ env.DEPLOY_DIR }}"
 
+            # Update .env secrets if provided
             for var in POSTGRES_PASSWORD JWT_SECRET INTERNAL_API_KEY JAVA_CORE_API_KEY GRAFANA_ADMIN_PASSWORD; do
               val="${!var}"
               if [[ -z "${val}" ]]; then
@@ -63,6 +67,7 @@ jobs:
               fi
             done
 
+            # Verify critical secrets exist
             for var in POSTGRES_PASSWORD JWT_SECRET INTERNAL_API_KEY JAVA_CORE_API_KEY GRAFANA_ADMIN_PASSWORD; do
               current_val=$(grep "^${var}=" .env 2>/dev/null | cut -d'=' -f2-)
               if [[ -z "${current_val}" ]]; then
@@ -94,19 +99,17 @@ jobs:
             set -euo pipefail
             cd "${{ env.DEPLOY_DIR }}"
 
-            COMPOSE_FILE="docker-compose/docker-compose.shared.yml"
-            STAGING_FILE="docker-compose/docker-compose.staging.yml"
-
             MAX_ATTEMPTS=30
             ATTEMPT=0
             ALL_HEALTHY=false
 
             while [[ $ATTEMPT -lt $MAX_ATTEMPTS ]]; do
               ATTEMPT=$((ATTEMPT + 1))
-              UNHEALTHY=$(docker compose \
-                -f "${COMPOSE_FILE}" \
-                -f "${STAGING_FILE}" \
-                ps --format '{{.Name}} {{.Health}}' 2>/dev/null | grep -v -E '(healthy|starting)' || true)
+
+              UNHEALTHY=$(docker service ls \
+                --format '{{.Name}} {{.Replicas}}' |
+                grep -E 'yomu_(java-staging|rust-staging|frontend-staging)' |
+                awk '$2 !~ /1\/1/ {print $1 " " $2}' || true)
 
               if [[ -z "${UNHEALTHY}" ]]; then
                 ALL_HEALTHY=true
@@ -118,10 +121,45 @@ jobs:
             done
 
             if [[ "${ALL_HEALTHY}" != "true" ]]; then
-              echo "ERROR: Staging services did not become healthy within $((MAX_ATTEMPTS * 5)) seconds"
-              docker compose -f "${COMPOSE_FILE}" -f "${STAGING_FILE}" ps
+              echo "ERROR: Staging services did not reach healthy state within $((MAX_ATTEMPTS * 5)) seconds"
+              docker service ls --filter name=yomu_ --format 'table {{.Name}}\t{{.Replicas}}\t{{.Image}}'
               exit 1
             fi
 
             echo "=== Staging deployed successfully ==="
-            docker compose -f "${COMPOSE_FILE}" -f "${STAGING_FILE}" ps --format "table {{.Name}}\t{{.Status}}\t{{.Health}}"
+            docker service ls --filter name=yomu_ --format 'table {{.Name}}\t{{.Replicas}}\t{{.Image}}'
+
+            # Quick endpoint smoke tests via localhost
+            echo "=== Smoke tests ==="
+            PASS=0
+            FAIL=0
+
+            if curl -sf --max-time 10 -k -H 'Host: java-staging.yomu.my.id' \
+              https://localhost/actuator/health/readiness > /dev/null 2>&1; then
+              echo "  [PASS] Java-staging readiness"
+              PASS=$((PASS + 1))
+            else
+              echo "  [FAIL] Java-staging readiness"
+              FAIL=$((FAIL + 1))
+            fi
+
+            if curl -sf --max-time 10 -k -H 'Host: rust-staging.yomu.my.id' \
+              https://localhost/health > /dev/null 2>&1; then
+              echo "  [PASS] Rust-staging health"
+              PASS=$((PASS + 1))
+            else
+              echo "  [FAIL] Rust-staging health"
+              FAIL=$((FAIL + 1))
+            fi
+
+            if curl -sf --max-time 10 -k -L -H 'Host: staging.yomu.my.id' \
+              https://localhost/ > /dev/null 2>&1; then
+              echo "  [PASS] Frontend-staging root"
+              PASS=$((PASS + 1))
+            else
+              echo "  [FAIL] Frontend-staging root"
+              FAIL=$((FAIL + 1))
+            fi
+
+            echo "Smoke tests: ${PASS} passed, ${FAIL} failed"
+            [[ ${FAIL} -eq 0 ]] || exit 1

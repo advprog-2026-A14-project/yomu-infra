@@ -21,7 +21,7 @@ groups:
             following a recent deployment.
 
       - alert: ServiceDown
-        expr: up{job=~"frontend-(blue|green|staging)|java-(blue|green|staging)|rust-(blue|green|staging)"} == 0
+        expr: up{job=~"frontend|java|rust|frontend-staging|java-staging|rust-staging"} == 0
         for: 1m
         labels:
           severity: critical
@@ -74,22 +74,19 @@ groups:
             Error rate for {{ $labels.service }} is {{ $value | printf "%.2f" }}
             requests/sec (5xx responses over last 5m). Threshold: 0.1 req/s.
 
-      - alert: BlueGreenOutOfSync
+      - alert: AllProductionServicesDown
         expr: >-
-          (count(up{job=~"java-blue|rust-blue|frontend-blue"} == 1) == 0)
-          and
-          (count(up{job=~"java-green|rust-green|frontend-green"} == 1) == 0)
+          count(up{job=~"java|rust|frontend"} == 1) == 0
         for: 2m
         labels:
           severity: critical
           environment: production
           service: platform
         annotations:
-          summary: "Both blue and green environments have no healthy services"
+          summary: "All production services are down"
           description: >-
-            No services are reachable in either the blue or green environment.
-            This likely indicates a platform-wide outage rather than a
-            blue-green switch.
+            No production services (java, rust, frontend) are reachable.
+            This indicates a platform-wide outage.
 
       - alert: DiskSpaceLow
         expr: node_filesystem_avail_bytes / node_filesystem_size_bytes < 0.1
@@ -184,7 +181,7 @@ groups:
 
       # ── Rust / HTTP Profiling Alerts ──
       - alert: RustP99LatencyHigh
-        expr: histogram_quantile(0.99, sum by (le) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~"rust-(blue|green|staging)"}[1m]))) > 2
+        expr: histogram_quantile(0.99, sum by (le) (rate(axum_prometheus_requests_duration_seconds_bucket{job=~"rust|rust-staging"}[1m]))) > 2
         for: 2m
         labels:
           severity: warning
