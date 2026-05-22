@@ -14,6 +14,14 @@ services:
       - /opt/yomu/traefik/dynamic:/etc/traefik/dynamic:ro
     networks:
       - yomu-overlay-net
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        max-file: "5"
+        max-size: "10m"
+
     deploy:
       replicas: 1
       update_config:
@@ -34,6 +42,14 @@ services:
       - /opt/yomu/scripts/init-databases.sql:/docker-entrypoint-initdb.d/02-init-databases.sql:ro
     networks:
       - yomu-overlay-net
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        max-file: "5"
+        max-size: "10m"
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
@@ -54,6 +70,14 @@ services:
       - redis_data:/data
     networks:
       - yomu-overlay-net
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        max-file: "5"
+        max-size: "10m"
+
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -81,6 +105,14 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     networks:
       - yomu-overlay-net
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        max-file: "5"
+        max-size: "10m"
+
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health/readiness"]
       interval: 15s
@@ -125,6 +157,14 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     networks:
       - yomu-overlay-net
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        max-file: "5"
+        max-size: "10m"
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
@@ -166,6 +206,14 @@ services:
       NODE_ENV: production
     networks:
       - yomu-overlay-net
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        max-file: "5"
+        max-size: "10m"
+
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"]
       interval: 15s
@@ -255,6 +303,14 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     networks:
       - yomu-overlay-net
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        max-file: "5"
+        max-size: "10m"
+
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8080/actuator/health/readiness"]
       interval: 15s
@@ -295,6 +351,14 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
     networks:
       - yomu-overlay-net
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        max-file: "5"
+        max-size: "10m"
+
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
       interval: 15s
@@ -332,6 +396,14 @@ services:
       NODE_ENV: staging
     networks:
       - yomu-overlay-net
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        max-file: "5"
+        max-size: "10m"
+
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1));"]
       interval: 15s
