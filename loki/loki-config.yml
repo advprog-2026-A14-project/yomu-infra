@@ -2,6 +2,9 @@ auth_enabled: false
 
 server:
   http_listen_port: 3100
+  grpc_listen_port: 9095
+  grpc_listen_address: 127.0.0.1
+  http_listen_address: 0.0.0.0
   log_level: info
 
 common:
@@ -12,9 +15,25 @@ common:
     kvstore:
       store: inmemory
 
+frontend:
+  instance_addr: 127.0.0.1
+  port: 9095
+  compress_responses: true
+
+query_scheduler:
+  scheduler_ring:
+    instance_addr: 127.0.0.1
+
+frontend_worker:
+  scheduler_address: 127.0.0.1:9095
+
+ingester:
+  lifecycler:
+    addr: 127.0.0.1
+
 schema_config:
   configs:
-    - from: 2024-02-01
+    - from: 2020-10-24
       store: tsdb
       object_store: filesystem
       schema: v13

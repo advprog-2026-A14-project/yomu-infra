@@ -528,7 +528,10 @@ services:
     image: grafana/loki:3.0.0
     ports:
       - "127.0.0.1:3100:3100"
-    command: -config.file=/etc/loki/loki-config.yml
+    command: >
+      -config.file=/etc/loki/loki-config.yml
+      -frontend.instance-addr=127.0.0.1
+      -query-scheduler.ring.instance-addr=127.0.0.1
     volumes:
       - loki_data:/loki
       - /opt/yomu/loki:/etc/loki:ro
