@@ -92,7 +92,13 @@ jobs:
             PASS=0
             FAIL=0
 
-            if curl -sf --max-time 10 -k -H 'Host: java.yomu.my.id' https://localhost/actuator/health/readiness > /dev/null 2>&1; then
+            # Wait for Traefik to fully reload certificates and routes
+            echo "Waiting 15s for Traefik to finish reload..."
+            sleep 15
+
+            echo "=== Testing production endpoints via public hostnames ==="
+
+            if curl -sf --max-time 15 -k https://java.yomu.my.id/actuator/health/readiness > /dev/null 2>&1; then
               echo "  [PASS] Java API readiness"
               PASS=$((PASS + 1))
             else
@@ -100,7 +106,7 @@ jobs:
               FAIL=$((FAIL + 1))
             fi
 
-            if curl -sf --max-time 10 -k -H 'Host: rust.yomu.my.id' https://localhost/health > /dev/null 2>&1; then
+            if curl -sf --max-time 15 -k https://rust.yomu.my.id/health > /dev/null 2>&1; then
               echo "  [PASS] Rust API health"
               PASS=$((PASS + 1))
             else
@@ -108,7 +114,7 @@ jobs:
               FAIL=$((FAIL + 1))
             fi
 
-            if curl -sf --max-time 10 -k -L -H 'Host: yomu.my.id' https://localhost/ > /dev/null 2>&1; then
+            if curl -sf --max-time 15 -k -L https://yomu.my.id/ > /dev/null 2>&1; then
               echo "  [PASS] Frontend root"
               PASS=$((PASS + 1))
             else
