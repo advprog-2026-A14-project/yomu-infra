@@ -155,6 +155,7 @@ services:
       JAVA_CORE_URL: http://java:8080
       SERVER_PORT: "8080"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      RUST_LOG: "yomu_backend_rust=info,tower_http=info,axum::rejection=trace"
     networks:
       - yomu-overlay-net
     logging:
@@ -349,6 +350,7 @@ services:
       JAVA_CORE_URL: http://java-staging:8080
       SERVER_PORT: "8080"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      RUST_LOG: "yomu_backend_rust=info,tower_http=info,axum::rejection=trace"
     networks:
       - yomu-overlay-net
     logging:
