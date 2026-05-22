@@ -4,6 +4,7 @@
 *.key
 traefik/certificates/*.crt
 traefik/certificates/*.key
+traefik/acme.json*
 
 # OS
 .DS_Store
@@ -23,3 +24,11 @@ monitoring/benchmarks/*
 # Script output
 scripts/*.log
 SECRETS.md
+
+# Runtime provisioning on VPS
+EOF
+/dashboards/
+/datasources/
+docker-compose.yml.bak
+docker-compose/traefik/
+
